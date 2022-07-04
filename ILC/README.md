@@ -17,18 +17,18 @@
 In each iteration, the program first finds multiple peaks in the euclidean error. Then it uses blending model to generate gradient direction to minimize error through adjusting breakpoints. Finally, the error from the robot is used with the gradient direction to minimize the error.
 
 <p align="center">
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_0.png" width="200" />
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_1.png" width="200" /> 
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_2.png" width="200" />
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_3.png" width="200" />
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_4.png" width="200" /> 
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_0.png" width="180" />
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_1.png" width="180" /> 
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_2.png" width="180" />
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_3.png" width="180" />
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_4.png" width="180" /> 
 </p>
 <p align="center">
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_5.png" width="200" />
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_6.png" width="200" /> 
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_7.png" width="200" />
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_8.png" width="200" />
-  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_9.png" width="200" /> 
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_5.png" width="180" />
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_6.png" width="180" /> 
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_7.png" width="180" />
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_8.png" width="180" />
+  <img src="max_gradient/fanuc/curve_1_speed_300/iteration_9.png" width="180" /> 
 </p>
 
 #### Execution
