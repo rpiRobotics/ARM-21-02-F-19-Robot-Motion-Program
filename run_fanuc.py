@@ -1,9 +1,10 @@
-from PyQt5.QtCore import QDateTime,Qt,QTimer,QDir,QObject,QRunnable,pyqtSignal,pyqtSlot
+from PyQt5.QtCore import QDateTime,Qt,QTimer,QDir,QObject,QRunnable,pyqtSignal,pyqtSlot,QThread
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QSpinBox, QDoubleSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
         QVBoxLayout, QWidget,QFileDialog)
+from PyQt5.QtGui import QPixmap
 import sys
 from pathlib import Path
 from pandas import *
@@ -13,72 +14,79 @@ import time
 from toolbox.robots_def import *
 from functions_fanuc import *
 
-class WorkerSignals(QObject):
-    '''
-    Defines the signals available from a running worker thread.
+# Timer Objecy
+class Timer(QObject):
+    finished = pyqtSignal(float)
+    progress = pyqtSignal(float)
 
-    Supported signals are:
+    def __init__(self):
+        super().__init__()
+        self.timer_flag=False
 
-    finished
-        No data
-
-    error
-        tuple (exctype, value, traceback.format_exc() )
-
-    result
-        object data returned from processing, anything
-
-    progress
-        int indicating % progress
-
-    '''
-    finished = pyqtSignal()
-    error = pyqtSignal(tuple)
-    result = pyqtSignal(object)
-    progress = pyqtSignal(int)
-
-class Worker(QRunnable):
-    '''
-    Worker thread
-
-    Inherits from QRunnable to handler worker thread setup, signals and wrap-up.
-
-    :param callback: The function callback to run on this worker thread. Supplied args and
-                     kwargs will be passed through to the runner.
-    :type callback: function
-    :param args: Arguments to pass to the callback function
-    :param kwargs: Keywords to pass to the callback function
-
-    '''
-    def __init__(self, fn, *args, **kwargs):
-        super(Worker, self).__init__()
-
-        # Store constructor arguments (re-used for processing)
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-
-        # Add the callback to our kwargs
-        self.kwargs['progress_callback'] = self.signals.progress
-
-    @pyqtSlot()
     def run(self):
-        '''
-        Initialise the runner function with passed args, kwargs.
-        '''
+        st=time.time()
+        self.timer_flag=True
+        while self.timer_flag:
+            time.sleep(1)
+            this_stamp=time.time()
+            self.duration=this_stamp-st
+            self.progress.emit(self.duration)
+        self.finished.emit(self.duration)
+    
+    def stop(self):
+        print("Timer stop")
+        self.timer_flag=False
 
-        # Retrieve args/kwargs here; and fire processing using them
+# Worker Object
+class Worker(QObject):
+    proc_finished=pyqtSignal()
+    finished = pyqtSignal()
+    progress = pyqtSignal(float)
+    result = pyqtSignal('QVariant')
+
+    def __init__(self, function, *args):
+        super().__init__()
+        self.function = function
+        self.args = args
+        self.duration=None
+
+    def run(self):
         try:
-            result = self.fn(*self.args, **self.kwargs)
+            res = list(self.function(*self.args))
         except:
-            traceback.print_exc()
-            exctype, value = sys.exc_info()[:2]
-            self.signals.error.emit((exctype, value, traceback.format_exc()))
-        else:
-            self.signals.result.emit(result)  # Return the result of the processing
-        finally:
-            self.signals.finished.emit()  # Done
+            print("There is Error")
+            res = []
+        self.proc_finished.emit()
+        while self.duration is None:
+            time.sleep(0.01)
+        res.append(self.duration)
+        self.result.emit(res)
+        self.finished.emit()
+    
+    def gettime(self,duration):
+        self.duration=duration
+    
+def setup_worker_timer(worker,worker_thread,timer,timer_thread,prog_func,res_func):
+    
+    # setup timer
+    timer.moveToThread(timer_thread)
+    timer_thread.started.connect(timer.run)
+    timer.progress.connect(prog_func)
+    timer.finished.connect(worker.gettime)
+    timer.finished.connect(timer_thread.quit)
+    timer.finished.connect(timer.deleteLater)
+    timer_thread.finished.connect(timer_thread.deleteLater)
+
+    # setup worker and thread
+    worker.moveToThread(worker_thread)
+    worker_thread.started.connect(worker.run)
+    worker.proc_finished.connect(lambda: timer.stop()) # stop the timer when finish
+    worker.finished.connect(worker_thread.quit)
+    worker.finished.connect(worker.deleteLater)
+    worker.result.connect(res_func)
+    worker_thread.finished.connect(worker_thread.deleteLater)
+
+    return worker,worker_thread,timer,timer_thread
 
 class SprayGUI(QDialog):
     def __init__(self, parent=None):
@@ -169,16 +177,16 @@ class SprayGUI(QDialog):
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCurveFile)
         self.curve_filenametext=QLabel('(Please add curve file)')
-        runButton=QPushButton("Run")
-        runButton.setDefault(True)
-        runButton.clicked.connect(self.run_RedundancyResolution)
+        self.redres_runButton=QPushButton("Run")
+        self.redres_runButton.setDefault(True)
+        self.redres_runButton.clicked.connect(self.run_RedundancyResolution)
         self.run1_result=QLabel('')
 
         # add layout
         layout = QVBoxLayout()
         layout.addWidget(filebutton)
         layout.addWidget(self.curve_filenametext)
-        layout.addWidget(runButton)
+        layout.addWidget(self.redres_runButton)
         layout.addWidget(self.run1_result)
         layout.addStretch(1)
         self.redResLeftBox.setLayout(layout)
@@ -205,11 +213,41 @@ class SprayGUI(QDialog):
             return
         
         self.run1_result.setText('Solving Redundancy Resolution')
-        try:
-            curve_base,curve_normal_base,curve_js,H=redundanct_resolution(self.curve_filename,self.robot1)
-        except:
-            print("There is Error")
+
+        # qthread for redundancy resolution
+        self.redres_thread=QThread()
+        self.redres_timer_thread=QThread()
+        self.redres_worker=Worker(redundanct_resolution,self.curve_filename,self.robot1)
+        self.redres_timer=Timer()
         
+
+        self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread=\
+            setup_worker_timer(self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread,\
+                self.prog_RedundancyResolution,self.res_RedundancyResolution)
+
+        ## edit interface
+        self.redres_runButton.setEnabled(False)
+        
+        ## final result setup
+        self.redres_thread.finished.connect(lambda: self.redres_runButton.setEnabled(True))
+
+        ## start thread
+        self.redres_thread.start()
+        self.redres_timer_thread.start()
+    
+    def prog_RedundancyResolution(self,n):
+        
+        self.run1_result.setText('Solving Redundancy Resolution. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
+    
+    def res_RedundancyResolution(self,result):
+
+        if len(result) <= 1:
+            run_duration=result[0]
+            self.run1_result.setText('Redundancy Resolution failed because of errors. Time:',time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            return
+
+        curve_base,curve_normal_base,curve_js,H,run_duration=result
+
         save_filepath=self.curve_pathname+'/'+self.robot1_name+'_fanuc/'
         Path(save_filepath).mkdir(exist_ok=True)
 
@@ -220,7 +258,7 @@ class SprayGUI(QDialog):
         with open(save_filepath+'blade_pose.yaml', 'w') as file:
             documents = yaml.dump({'H':H.tolist()}, file)
 
-        self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath)
+        self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
 
     def motionProgGenMid(self):
 
@@ -228,7 +266,7 @@ class SprayGUI(QDialog):
         self.moProgGenMidBox=QGroupBox('Motion Program Generation')
 
         # add button
-        filebutton=QPushButton('Open Curve File')
+        filebutton=QPushButton('Open Curve Js File')
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCurveJsFile)
         self.curvejs_filenametext=QLabel('(Please add curve joint space file)')
@@ -238,9 +276,9 @@ class SprayGUI(QDialog):
         self.total_seg_box.setValue(100)
         seglabel=QLabel('Total Segments:')
         seglabel.setBuddy(self.total_seg_box)
-        runButton=QPushButton("Run")
-        runButton.setDefault(True)
-        runButton.clicked.connect(self.run_MotionProgGeneration)
+        self.moprog_runButton=QPushButton("Run")
+        self.moprog_runButton.setDefault(True)
+        self.moprog_runButton.clicked.connect(self.run_MotionProgGeneration)
         self.run2_result=QLabel('')
 
         # add layout
@@ -249,7 +287,7 @@ class SprayGUI(QDialog):
         layout.addWidget(self.curvejs_filenametext)
         layout.addWidget(seglabel)
         layout.addWidget(self.total_seg_box)
-        layout.addWidget(runButton)
+        layout.addWidget(self.moprog_runButton)
         layout.addWidget(self.run2_result)
         layout.addStretch(1)
         self.moProgGenMidBox.setLayout(layout)
@@ -275,20 +313,49 @@ class SprayGUI(QDialog):
             self.run2_result.setText("Curve joint space file not yet choosed.")
             return
 
-        total_seg=int(self.total_seg_box.value())
-        print(total_seg)
         self.run2_result.setText('Generating Motion Program')
-        try:
-            breakpoints,primitives,q_bp,p_bp = motion_program_generation(self.curvejs_filename,self.robot1,total_seg)
-        except:
-            print("There is error.")
+        total_seg=int(self.total_seg_box.value())
+
+        # qthread for redundancy resolution
+        self.moprog_thread=QThread()
+        self.moprog_timer_thread=QThread()
+        self.moprog_timer=Timer()
+        self.moprog_worker=Worker(motion_program_generation,self.curvejs_filename,self.robot1,total_seg)
+
+        self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread=\
+            setup_worker_timer(self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread,\
+                self.prog_MotionProgGeneration,self.res_MotionProgGeneration)
+
+        ## edit interface
+        self.moprog_runButton.setEnabled(False)
+        self.total_seg_box.setEnabled(False)
+        ## final result setup
+        self.moprog_thread.finished.connect(lambda: self.moprog_runButton.setEnabled(True))
+        self.moprog_thread.finished.connect(lambda: self.total_seg_box.setEnabled(True))
+
+        ## start thread
+        self.moprog_timer_thread.start()
+        self.moprog_thread.start()
+    
+    def prog_MotionProgGeneration(self,n):
+        
+        self.run2_result.setText('Generating Motion Program. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
+
+    def res_MotionProgGeneration(self,result):
+
+        if len(result) <= 1:
+            run_duration=result[0]
+            self.run2_result.setText('Motion Program Generation Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            return
+
+        breakpoints,primitives,q_bp,p_bp,run_duration=result
 
         # save motion program commands
         df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'points':p_bp,'q_bp':q_bp})
         df.to_csv(self.curvejs_pathname+'/command.csv',header=True,index=False)
 
-        self.run2_result.setText('Motion Program Generated')
-
+        self.run2_result.setText('Motion Program Generated\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+        
     def motionProgUpdateRight(self):
         
         self.moProgUpRightBox=QGroupBox('Motion Program Update')
@@ -308,7 +375,6 @@ class SprayGUI(QDialog):
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCmdFile)
         self.cmd_filenametext=QLabel('(Please add motion command file)')
-
 
         # box for vel
         self.vel_box = QSpinBox()
@@ -340,10 +406,11 @@ class SprayGUI(QDialog):
         velstdlabel=QLabel('Velocity Std (%):')
         velstdlabel.setBuddy(self.vel_std_box)
 
-        runButton=QPushButton("Run")
-        runButton.setDefault(True)
-        runButton.clicked.connect(self.run_MotionProgUpdate)
+        self.moupdate_runButton=QPushButton("Run")
+        self.moupdate_runButton.setDefault(True)
+        self.moupdate_runButton.clicked.connect(self.run_MotionProgUpdate)
         self.run3_result=QLabel('')
+        self.run3_result_img=QLabel('')
 
         # boxes
         vellayout=QHBoxLayout()
@@ -369,8 +436,9 @@ class SprayGUI(QDialog):
         layout.addWidget(self.cmd_filenametext)
         layout.addLayout(vellayout)
         layout.addLayout(tollayout)
-        layout.addWidget(runButton)
+        layout.addWidget(self.moupdate_runButton)
         layout.addWidget(self.run3_result)
+        layout.addWidget(self.run3_result_img)
         layout.addStretch(1)
         self.moProgUpRightBox.setLayout(layout)
     
@@ -418,17 +486,101 @@ class SprayGUI(QDialog):
         if self.cmd_filenametext is None:
             self.run3_result.setText("Command file not yet choosed.")
             return
-
+        
         vel=int(self.vel_box.value())
         errtol=float(self.error_box.value())
         angerrtol=float(self.ang_error_box.value())
         velstdtol=float(self.vel_std_box.value())
         self.run3_result.setText('Updating Motion Program')
+
+        ## delete previous tmp result
+        output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
+        all_files=os.listdir(output_dir)
+        if 'final_speed.npy' in all_files:
+            os.remove(output_dir+'final_speed.npy')
+        if 'final_error.npy' in all_files:
+            os.remove(output_dir+'final_error.npy')
+        if 'final_ang_error.npy' in all_files:
+            os.remove(output_dir+'final_ang_error.npy')
+        if 'final_iteration.png' in all_files:
+            os.remove(output_dir+'final_iteration.png')
         
-        motion_program_update(self.cmd_pathname,self.robot1,vel,self.des_curve_filename,self.des_curvejs_filename,\
+        # qthread for redundancy resolution
+        self.moupdate_thread=QThread()
+        self.moupdate_timer_thread=QThread()
+        self.moupdate_timer=Timer()
+        self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,vel,self.des_curve_filename,self.des_curvejs_filename,\
             errtol,angerrtol,velstdtol)
 
-        self.run3_result.setText('Motion Program Update.\nCommand file saved at\n'+self.cmd_pathname+'/result_speed_'+str(vel))
+        self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
+            setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\
+                self.prog_MotionProgUpdate,self.res_MotionProgUpdate)
+
+        ## edit interface
+        self.moupdate_runButton.setEnabled(False)
+        self.vel_box.setEnabled(False)
+        self.error_box.setEnabled(False)
+        self.ang_error_box.setEnabled(False)
+        self.vel_std_box.setEnabled(False)
+        ## final result setup
+        self.moupdate_thread.finished.connect(lambda: self.moupdate_runButton.setEnabled(True))
+        self.moupdate_thread.finished.connect(lambda: self.vel_box.setEnabled(True))
+        self.moupdate_thread.finished.connect(lambda: self.error_box.setEnabled(True))
+        self.moupdate_thread.finished.connect(lambda: self.ang_error_box.setEnabled(True))
+        self.moupdate_thread.finished.connect(lambda: self.vel_std_box.setEnabled(True))
+
+        ## start thread
+        self.moupdate_timer_thread.start()
+        self.moupdate_thread.start()
+    
+    def prog_MotionProgUpdate(self,n):
+
+        vel=int(self.vel_box.value())
+        output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
+        all_files=os.listdir(output_dir)
+
+        speed=None
+        error=None
+        angle_error=None
+        if 'final_speed.npy' in all_files:
+            speed=np.load(output_dir+'final_speed.npy')
+        if 'final_error.npy' in all_files:
+            error=np.load(output_dir+'final_error.npy')
+        if 'final_ang_error.npy' in all_files:
+            angle_error=np.load(output_dir+'final_ang_error.npy')
+        if 'final_iteration.png' in all_files:
+            pixmap=QPixmap(output_dir+'final_iteration.png')
+            self.run3_result_img.setPixmap(pixmap)
+        
+        result_text='Updating Motion Program. Time:'+time.strftime("%H:%M:%S", time.gmtime(n))
+        if speed is not None and error is not None and angle_error is not None:
+            result_text+='\nCurrent Max Error:'+str(round(np.max(error),2))+' mm, Max Ang Error:'+str(round(np.max(angle_error),2))+' deg'+\
+                '\nAve. Speed:'+str(round(np.mean(speed),2))+' mm/sec, Std. Speed:'+str(round(np.std(speed),2))+' mm/sec, Std/Ave Speed:'+str(round(100*np.std(speed)/np.mean(speed),2))+' %'
+        self.run3_result.setText(result_text)
+
+    def res_MotionProgUpdate(self,result):
+
+        if len(result) <= 1:
+            run_duration=result[0]
+            self.run3_result.setText('Motion Program Update. Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            return
+
+        curve_exe_js,speed,error,angle_error,breakpoints,primitives,q_bp,p_bp,run_duration=result
+        vel=int(self.vel_box.value())
+
+        # save motion program commands
+        # df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'points':p_bp,'q_bp':q_bp})
+        df=DataFrame({'primitives':primitives,'points':p_bp,'q_bp':q_bp})
+        df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command.csv',header=True,index=False)
+        DataFrame(curve_exe_js).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js_exe.csv',header=False,index=False)
+
+        result_text='Motion Program Update. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration))+\
+            '\nCommand file saved at\n'+self.cmd_pathname+'/result_speed_'+str(vel)
+        result_text+='\nMax Error:'+str(round(np.max(error),2))+' mm, Max Ang Error:'+str(round(np.max(angle_error),2))+' deg'+\
+            '\nAve. Speed:'+str(round(np.mean(speed),2))+' mm/sec, Std. Speed:'+str(round(np.std(speed),2))+' mm/sec, Std/Ave Speed:'+str(round(100*np.std(speed)/np.mean(speed),2))+' %'
+        self.run3_result.setText(result_text)
+
+
 
 if __name__ == '__main__':
 

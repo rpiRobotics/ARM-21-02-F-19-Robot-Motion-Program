@@ -21,7 +21,7 @@ from blending import *
 from fanuc_utils import *
 
 def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False):
 
     curve=desired_curve
     curve_js=desired_curve_js
@@ -85,7 +85,7 @@ def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
 
         ##############################calcualte error########################################
         error,angle_error=calc_all_error_w_normal(curve_exe,curve[:,:3],curve_exe_R[:,:,-1],curve[:,3:])
-        print('Iteration:',i,', Max Error:',max(error),', Ave. Speed:',ave_speed, ', Speed Std:',std_speed, 'Speed Std/Ave:',(ave_speed/std_speed*100),'%')
+        print('Iteration:',i,', Max Error:',max(error),', Ave. Speed:',ave_speed, ', Speed Std:',std_speed, 'Speed Std/Ave:',(std_speed*100/ave_speed),'%')
         #############################error peak detection###############################
         peaks,_=find_peaks(error,height=multi_peak_threshold,prominence=0.05,distance=20/(lam[int(len(lam)/2)]-lam[int(len(lam)/2)-1]))		###only push down peaks higher than height, distance between each peak is 20mm, threshold to filter noisy peaks
 
@@ -113,14 +113,24 @@ def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
         ax1.legend(loc=0)
         ax2.legend(loc=0)
 
-        # save fig
-        plt.legend()
-        plt.savefig(ilc_output+'iteration_'+str(i))
-        plt.clf()
-        # plt.show()
+        #### save all things
+        if save_all_file:
+            # save fig
+            plt.legend()
+            plt.savefig(ilc_output+'iteration_'+str(i))
+            plt.savefig(ilc_output+'final_iteration')
+            plt.clf()
+        else:
+            plt.show()
+
         # save bp
-        df=DataFrame({'primitives':primitives,'points':p_bp,'q_bp':q_bp})
-        df.to_csv(ilc_output+'command_'+str(i)+'.csv',header=True,index=False)
+        if save_all_file:
+            df=DataFrame({'primitives':primitives,'points':p_bp,'q_bp':q_bp})
+            df.to_csv(ilc_output+'command_'+str(i)+'.csv',header=True,index=False)
+            DataFrame(curve_exe_js).to_csv(ilc_output+'curve_js_exe.csv',header=False,index=False)
+            np.save(ilc_output+'final_speed.npy',speed)
+            np.save(ilc_output+'final_error.npy',error)
+            np.save(ilc_output+'final_ang_error.npy',angle_error)
 
         if max(error)<error_tol and max(np.rad2deg(angle_error))<angerror_tol and (std_speed/ave_speed*100)<velstd_tol:
             print("Tolerance Satisfied")
@@ -167,6 +177,8 @@ def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
 
             de_dp=ilc.get_gradient_from_model_xyz_fanuc(p_bp,q_bp,breakpoints_blended,curve_blended,peak_error_curve_blended_idx,robot.fwd(curve_exe_js[peak]),curve[peak_error_curve_idx,:3],breakpoint_interp_2tweak_indices,ave_speed)
             p_bp, q_bp=ilc.update_bp_xyz(p_bp,q_bp,de_dp,error[peak],breakpoint_interp_2tweak_indices,alpha=alpha)
+    
+    return curve_exe_js,speed,error,angle_error,breakpoints,primitives,q_bp,p_bp
 
 def main():
     
