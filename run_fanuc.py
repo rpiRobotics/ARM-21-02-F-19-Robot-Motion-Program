@@ -53,8 +53,9 @@ class Worker(QObject):
     def run(self):
         try:
             res = list(self.function(*self.args))
-        except:
+        except Exception as e:
             print("There is Error")
+            print(e)
             res = []
         self.proc_finished.emit()
         while self.duration is None:
