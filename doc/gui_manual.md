@@ -18,6 +18,15 @@ A csv file defined the desired curve path (position and normal direction) is req
 ...
 ```
 
+## Run Gui
+
+Execute `run_fanuc.py` in the directory where you saved the repo.
+
+```
+cd (repo directory)
+python run_fanuc.py
+```
+
 ## Solving Redundancy Resolution
 
 The step finds the optimal curve pose (relative to the robot base frame), the curve represented in base frame and the curve in joint space (joints trajectories).
