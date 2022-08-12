@@ -495,16 +495,18 @@ class SprayGUI(QDialog):
         self.run3_result.setText('Updating Motion Program')
 
         ## delete previous tmp result
-        output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
-        all_files=os.listdir(output_dir)
-        if 'final_speed.npy' in all_files:
-            os.remove(output_dir+'final_speed.npy')
-        if 'final_error.npy' in all_files:
-            os.remove(output_dir+'final_error.npy')
-        if 'final_ang_error.npy' in all_files:
-            os.remove(output_dir+'final_ang_error.npy')
-        if 'final_iteration.png' in all_files:
-            os.remove(output_dir+'final_iteration.png')
+        all_files=os.listdir(self.cmd_pathname)
+        if self.cmd_pathname+'/result_speed_'+str(vel)+'/' in all_files:
+            output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
+            all_files=os.listdir(output_dir)
+            if 'final_speed.npy' in all_files:
+                os.remove(output_dir+'final_speed.npy')
+            if 'final_error.npy' in all_files:
+                os.remove(output_dir+'final_error.npy')
+            if 'final_ang_error.npy' in all_files:
+                os.remove(output_dir+'final_ang_error.npy')
+            if 'final_iteration.png' in all_files:
+                os.remove(output_dir+'final_iteration.png')
         
         # qthread for redundancy resolution
         self.moupdate_thread=QThread()

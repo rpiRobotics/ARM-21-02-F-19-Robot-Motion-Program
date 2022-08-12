@@ -14,7 +14,7 @@ class MotionSendFANUC(object):
         self.uframe = uframe
         self.utool = utool
     
-    def exec_motions(self,robot,primitives,breakpoints,p_bp,q_bp,speed,zone):
+    def exec_motions(self,robot,primitives,breakpoints,p_bp,q_bp,speed,zone,save_ls=False,save_dir=''):
 
         tp_pre = TPMotionProgram()
 
@@ -41,6 +41,13 @@ class MotionSendFANUC(object):
             else: #moveJ
                 robt = jointtarget(self.group,self.uframe,self.utool,np.degrees(q_bp[i][0]),[0]*6)
                 tp.moveJ(robt,speed,'%',this_zone)
+        
+        if save_ls:
+            if save_dir == '':
+                save_dir='TMP'
+            if save_dir[-1] == '/':
+                save_dir=save_dir+'TMP'
+            tp.dump_program(save_dir)
         
         return self.client.execute_motion_program(tp)
     

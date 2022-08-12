@@ -21,7 +21,7 @@ from blending import *
 from fanuc_utils import *
 
 def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name=''):
 
     curve=desired_curve
     curve_js=desired_curve_js
@@ -70,7 +70,7 @@ def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
     for i in range(iteration_max):
         
         ###execute,curve_fit_js only used for orientation
-        logged_data=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z)
+        logged_data=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z,save_ls,ilc_output+save_name)
 
         # print(logged_data)
         StringData=StringIO(logged_data.decode('utf-8'))
