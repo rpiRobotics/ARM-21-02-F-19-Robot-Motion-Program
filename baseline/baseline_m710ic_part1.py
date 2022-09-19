@@ -12,6 +12,7 @@ import sys
 # from simulation.roboguide.fanuc_toolbox.fanuc_client import FANUCClient, TPMotionProgram, joint2robtarget, jointtarget, robtarget
 # from toolbox.robots_def import arb_robot, m900ia
 sys.path.append('toolbox')
+sys.path.append('../toolbox')
 from robots_def import *
 from utils import *
 from lambda_calc import *
@@ -74,10 +75,11 @@ def find_js(robot,curve,curve_normal):
 
     ###get all possible initial config
     try:
-        q_inits=np.array(robot.inv(curve[0],curve_R[0]))
+        # q_inits=np.array(robot.inv(curve[0],curve_R[0]))
+        q_inits
     except:
         print('no solution available')
-        return
+        return []
 
     curve_js_all=[]
     for q_init in q_inits:

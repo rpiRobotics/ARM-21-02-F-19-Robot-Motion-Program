@@ -255,11 +255,15 @@ class SprayGUI(QDialog):
         ###save file
         df=DataFrame({'x':curve_base[:,0],'y':curve_base[:,1], 'z':curve_base[:,2],'x_dir':curve_normal_base[:,0],'y_dir':curve_normal_base[:,1], 'z_dir':curve_normal_base[:,2]})
         df.to_csv(save_filepath+'Curve_in_base_frame.csv',header=False,index=False)
-        DataFrame(curve_js).to_csv(save_filepath+'Curve_js.csv',header=False,index=False)
+        
         with open(save_filepath+'blade_pose.yaml', 'w') as file:
             documents = yaml.dump({'H':H.tolist()}, file)
 
-        self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+        if len(curve_js) > 0:
+            DataFrame(curve_js).to_csv(save_filepath+'Curve_js.csv',header=False,index=False)
+            self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+        else:
+            self.run1_result.setText('Redundancy Resolution. No JS Solution. \nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
 
     def motionProgGenMid(self):
 
