@@ -75,9 +75,10 @@ def find_js(robot,curve,curve_normal):
 
     ###get all possible initial config
     try:
-        # q_inits=np.array(robot.inv(curve[0],curve_R[0]))
-        q_inits
-    except:
+        q_inits=np.array(robot.inv(curve[0],curve_R[0]))
+        # q_inits
+    except Exception as e:
+        print(e)
         print('no solution available')
         return []
 
