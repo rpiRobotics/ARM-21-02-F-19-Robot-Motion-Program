@@ -96,7 +96,7 @@ class SprayGUI(QDialog):
         self.originalPalette = QApplication.palette()
 
         # robot box
-        robot_list=['','m710ic','m900ia']
+        robot_list=['','m710ic','m900ia','m10ia']
         self.robotComBox1=QComboBox()
         self.robotComBox1.addItems(robot_list)
         self.robotComBox1.currentTextChanged.connect(self.robot1_change)
@@ -163,6 +163,8 @@ class SprayGUI(QDialog):
             self.robot1=m710ic(d=50)
         elif robot1_choose == 'm900ia':
             self.robot1=m900ia(d=50)
+        elif robot1_choose == 'm10ia':
+            self.robot1=m10ia(d=50)
         self.robot1_name=robot1_choose
         
     def robot2_change(self,robot2_choose):
@@ -544,7 +546,10 @@ class SprayGUI(QDialog):
 
         vel=int(self.vel_box.value())
         output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
-        all_files=os.listdir(output_dir)
+        try:
+            all_files=os.listdir(output_dir)
+        except:
+            return
 
         speed=None
         error=None

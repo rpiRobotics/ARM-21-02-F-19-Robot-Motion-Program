@@ -332,10 +332,10 @@ class m710ic(object):
 class m10ia(object):
 	#default tool paintgun
 	def __init__(self,R_tool=Ry(np.radians(120)),p_tool=np.array([0.45,0,-0.05])*1000.,d=0):
-		###FANUC m710ic 70 Robot Definition
+		###FANUC m10ia Robot Definition
 		self.H=np.concatenate((ez,ey,-ey,-ex,-ey,-ex),axis=1)
-		# p0=np.array([[0],[0],[0.45]])
-		p0=np.array([[0],[0],[0]])
+		p0=np.array([[0],[0],[0.45]])
+		# p0=np.array([[0],[0],[0]])
 		p1=np.array([[0.15],[0],[0]])
 		p2=np.array([[0.],[0],[0.6]])
 		p3=np.array([[0],[0],[0.2]])   

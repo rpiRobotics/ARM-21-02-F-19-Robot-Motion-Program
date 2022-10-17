@@ -1,3 +1,5 @@
 *.pyc
 data/curve_1/m710ic*
 data/curve_2/m710ic*
+data/curve_1/m10ia*
+data/curve_2/m10ia*

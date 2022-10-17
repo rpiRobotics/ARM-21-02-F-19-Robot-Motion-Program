@@ -163,8 +163,13 @@ def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
             np.save(ilc_output+'final_error.npy',error)
             np.save(ilc_output+'final_ang_error.npy',angle_error)
 
+
         if max(error)<error_tol and max(np.rad2deg(angle_error))<angerror_tol and (std_speed/ave_speed*100)<velstd_tol:
             print("Tolerance Satisfied")
+            # time.sleep(5)
+            break
+        if max(error)<error_tol and max(np.rad2deg(angle_error))<angerror_tol:
+            print("Speed Tolerance Not Satisfied")
             # time.sleep(5)
             break
         
