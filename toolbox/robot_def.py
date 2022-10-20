@@ -15,7 +15,7 @@ def Rz(theta):
 
 def Rp2H(p,R):
 	###return homogeneous transformation matrix from R and p
-	return np.vstack((np.hstack((R,np.array([p]).T)),np.array([[0,0,0,1]])))
+	return np.vstack((np.hstack((R,np.array([p]).T)),np.array([0,0,0,1])))
 
 class Transform_all(object):
 	def __init__(self, p_all, R_all):

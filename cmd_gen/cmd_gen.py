@@ -1,8 +1,6 @@
 import numpy as np
-from pandas import *
 import sys, traceback, os
-from robots_def import *
-from utils import *
+from .greedy import *
 
 def motion_program_generation_baseline(filename,robot,total_seg):
     ###generate motion primitive command for equally spaced moveL as baseline
@@ -22,5 +20,26 @@ def motion_program_generation_baseline(filename,robot,total_seg):
 
     return breakpoints,primitives,q_bp,p_bp
 
-def motion_program_generation_greedy(filename,robot,total_seg):
-    pass
+def motion_program_generation_greedy(filename,robot,greedy_thresh):
+    ###generate motion primitive command for with greedy algorithm
+    curve_js =np.loadtxt(filename,delimiter=',')
+
+    min_length=10
+    greedy_fit_obj=greedy_fit(robot,curve_js, min_length=min_length,max_error_threshold=greedy_thresh)
+
+    breakpoints,primitives,p_bp,q_bp=greedy_fit_obj.fit_under_error()
+    
+    ############insert initial configuration#################
+    primitives.insert(0,'moveabsj_fit')
+    p_bp.insert(0,[greedy_fit_obj.curve_fit[0]])
+    q_bp.insert(0,[greedy_fit_obj.curve_fit_js[0]])
+
+    ###adjust breakpoint index
+    breakpoints[1:]=breakpoints[1:]-1
+
+    print(len(breakpoints))
+    print(len(primitives))
+    print(len(p_bp))
+    print(len(q_bp))
+
+    return breakpoints,primitives,q_bp,p_bp

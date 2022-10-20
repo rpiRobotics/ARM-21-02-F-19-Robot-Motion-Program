@@ -435,7 +435,7 @@ class SprayGUI(QDialog):
         self.moprog_thread=QThread()
         self.moprog_timer_thread=QThread()
         self.moprog_timer=Timer()
-        self.moprog_worker=Worker(motion_program_generation_greedy,self.curvejs_filename,self.robot1,total_seg)
+        self.moprog_worker=Worker(motion_program_generation_greedy,self.curvejs_filename,self.robot1,greedy_thresh)
 
         self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread=\
             setup_worker_timer(self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread,\
