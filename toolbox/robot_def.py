@@ -141,8 +141,12 @@ class robot_obj(object):
 
 	def inv(self,p,R,last_joints=[]):
 		if len(last_joints)==0:
-			last_joints=np.zeros(len(self.joint_vel_limit))
-		return self.tesseract_robot.invkin(Transform(R,p),last_joints)
+			return self.tesseract_robot.invkin(Transform(R,p),np.zeros(len(self.joint_vel_limit)))
+		else:	###sort solutions
+			theta_v=self.tesseract_robot.invkin(Transform(R,p),last_joints)
+			theta_dist = np.linalg.norm(np.subtract(theta_v,last_joints), axis=1)
+
+        	return [theta_v[i] for i in list(np.argsort(theta_dist))]
 
 def main():
 	robot=robot_obj('../config/abb_6640_180_255_robot_default_config.yml',tool_file_path='../config/paintgun.csv',d=50,acc_dict_path='')

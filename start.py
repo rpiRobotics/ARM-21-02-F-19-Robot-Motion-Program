@@ -161,7 +161,11 @@ class SprayGUI(QDialog):
         else:
             ###TODO: customize acc dict path
             self.robot1=robot_obj('config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='')
-        self.robot1_name=robot1_choose
+            if 'abb' in robot1_choose:
+                self.robot1MotionSend=MotionSendABB    ###TODO: add realrobot argument (IP, repeatibility)
+            elif 'fanuc' in robot1_choose:
+                self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)           
+        self.robot1_name=robot1_choose()
         
     def robot2_change(self,robot2_choose):
         print("Robot2 not supported now.")
@@ -647,7 +651,7 @@ class SprayGUI(QDialog):
         self.moupdate_thread=QThread()
         self.moupdate_timer_thread=QThread()
         self.moupdate_timer=Timer()
-        self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,vel,self.des_curve_filename,self.des_curvejs_filename,\
+        self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs_filename,\
             errtol,angerrtol,velstdtol)
 
         self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
