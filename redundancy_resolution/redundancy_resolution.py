@@ -22,12 +22,11 @@ def redundancy_resolution_baseline(filename, robot):
 
     return curve_base,curve_normal_base,curve_js,H
 
-def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot):
+def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd=1000):
+    print(baseline_pose_filename)
     curve = np.loadtxt(filename,delimiter=',')
 
-
-    v_cmd=1555
-    opt=lambda_opt(curve_dense[:,:3],curve_dense[:,3:],robot1=robot,steps=500,v_cmd=v_cmd)
+    opt=lambda_opt(curve[:,:3],curve[:,3:],robot1=robot,steps=500,v_cmd=v_cmd)
 
     #read in initial curve pose
     curve_pose=np.loadtxt(baseline_pose_filename,delimiter=',')
@@ -40,7 +39,7 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot):
     bnds=tuple(zip(lowerer_limit,upper_limit))
 
 
-    res = differential_evolution(opt.curve_pose_opt2, bnds, args=None,workers=11,
+    res = differential_evolution(opt.curve_pose_opt2, bnds, args=None,workers=-1,
                                     x0 = np.hstack((k*theta,curve_pose[:-1,-1],[0])),
                                     strategy='best1bin', maxiter=500,
                                     popsize=15, tol=1e-10,

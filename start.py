@@ -13,6 +13,8 @@ from pandas import *
 from toolbox.robot_def import *
 from redundancy_resolution.redundancy_resolution import *
 from cmd_gen.cmd_gen import *
+from toolbox.abb_utils import *
+# from toolbox.fanuc_utils import *
 
 # Timer Objecy
 class Timer(QObject):
@@ -159,13 +161,12 @@ class SprayGUI(QDialog):
         if robot1_choose == '':
             return
         else:
-            ###TODO: customize acc dict path
-            self.robot1=robot_obj('config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='')
+            self.robot1=robot_obj('config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc.pickle')
             if 'abb' in robot1_choose:
                 self.robot1MotionSend=MotionSendABB    ###TODO: add realrobot argument (IP, repeatibility)
             elif 'fanuc' in robot1_choose:
                 self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)           
-        self.robot1_name=robot1_choose()
+        self.robot1_name=robot1_choose
         
     def robot2_change(self,robot2_choose):
         print("Robot2 not supported now.")
@@ -183,7 +184,16 @@ class SprayGUI(QDialog):
         self.redres_baseline_runButton=QPushButton("Run Baseline")
         self.redres_baseline_runButton.setDefault(True)
         self.redres_baseline_runButton.clicked.connect(self.run_RedundancyResolution_baseline)
-        self.redres_diffevo_runButton=QPushButton("Run DiffEvo")
+
+        self.v_cmd_box = QSpinBox(self.redResLeftBox)
+        self.v_cmd_box.setMinimum(100)
+        self.v_cmd_box.setMaximum(2000)
+        self.v_cmd_box.setValue(500)
+        self.v_cmd_box.setSingleStep(100)
+        v_cmd_qt=QLabel('Threshold:')
+        v_cmd_qt.setBuddy(self.v_cmd_box)
+
+        self.redres_diffevo_runButton=QPushButton("Run DiffEvo (>1day, needs to run baseline first)")
         self.redres_diffevo_runButton.setDefault(True)
         self.redres_diffevo_runButton.clicked.connect(self.run_RedundancyResolution_diffevo)
 
@@ -194,6 +204,7 @@ class SprayGUI(QDialog):
         layout.addWidget(filebutton)
         layout.addWidget(self.curve_filenametext)
         layout.addWidget(self.redres_baseline_runButton)
+        layout.addWidget(self.v_cmd_box)
         layout.addWidget(self.redres_diffevo_runButton)
         layout.addWidget(self.run1_result)
         layout.addStretch(1)
@@ -253,12 +264,14 @@ class SprayGUI(QDialog):
             self.run1_result.setText("Curve File not yet choosed.")
             return
         
+        v_cmd=self.v_cmd_box.value()
         self.run1_result.setText('Solving Redundancy Resolution')
 
         # qthread for redundancy resolution
         self.redres_thread=QThread()
         self.redres_timer_thread=QThread()
-        self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,self.robot1)
+        baseline_pose_filename=os.path.dirname(self.curve_filename)+'/'+self.robot1_name+'/baseline/curve_pose.csv'
+        self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,baseline_pose_filename,self.robot1,v_cmd)
         self.redres_timer=Timer()
         
 
@@ -296,7 +309,7 @@ class SprayGUI(QDialog):
         df=DataFrame({'x':curve_base[:,0],'y':curve_base[:,1], 'z':curve_base[:,2],'x_dir':curve_normal_base[:,0],'y_dir':curve_normal_base[:,1], 'z_dir':curve_normal_base[:,2]})
         df.to_csv(save_filepath+'Curve_in_base_frame.csv',header=False,index=False)
         
-        np.savetxt(save_filepath+'curve_pose.csv',H)
+        np.savetxt(save_filepath+'curve_pose.csv',H,delimiter=',')
 
         if len(curve_js) > 0:
             DataFrame(curve_js).to_csv(save_filepath+'Curve_js.csv',header=False,index=False)
@@ -320,7 +333,7 @@ class SprayGUI(QDialog):
         df=DataFrame({'x':curve_base[:,0],'y':curve_base[:,1], 'z':curve_base[:,2],'x_dir':curve_normal_base[:,0],'y_dir':curve_normal_base[:,1], 'z_dir':curve_normal_base[:,2]})
         df.to_csv(save_filepath+'Curve_in_base_frame.csv',header=False,index=False)
         
-        np.savetxt(save_filepath+'curve_pose.csv',H)
+        np.savetxt(save_filepath+'curve_pose.csv',H,delimiter=',')
 
         if len(curve_js) > 0:
             DataFrame(curve_js).to_csv(save_filepath+'Curve_js.csv',header=False,index=False)
