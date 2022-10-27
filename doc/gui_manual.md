@@ -22,11 +22,11 @@ A csv file defined the desired curve path (position and normal direction) is req
 
 ## Run Gui
 
-Execute `run_fanuc.py` in the directory where you saved the repo.
+Execute `start.py` in the directory where you saved the repo.
 
 ```
 cd (repo directory)
-python run_fanuc.py
+python start.py
 ```
 
 ## Solving Redundancy Resolution

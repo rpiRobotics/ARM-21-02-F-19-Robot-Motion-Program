@@ -15,6 +15,7 @@ from redundancy_resolution.redundancy_resolution import *
 from cmd_gen.cmd_gen import *
 from toolbox.abb_utils import *
 # from toolbox.fanuc_utils import *
+from motion_update.motion_update import *
 
 # Timer Objecy
 class Timer(QObject):

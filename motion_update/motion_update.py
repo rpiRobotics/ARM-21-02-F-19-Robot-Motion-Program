@@ -1,9 +1,8 @@
-
 from .ilc_toolbox import *
-from fanuc_utils import *
-from .max_gradient_fanuc import *
+from pathlib import Path
 
-def motion_program_update(filepath,robot,vel,desired_curve_filename,desired_curvejs_filename,\
+
+def motion_program_update(filepath,robot,robotMotionSend,vel,desired_curve_filename,desired_curvejs_filename,\
     err_tol,angerr_tol,velstd_tol):
     
     curve = read_csv(desired_curve_filename,header=None).values
@@ -22,8 +21,9 @@ def error_descent(filepath,robot,robotMotionSend,velocity,desired_curve,desired_
     ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
     Path(ilc_output).mkdir(exist_ok=True)
 
+    ms = robotMotionSend()
     try:
-        breakpoints,primitives,p_bp,q_bp=extract_data_from_cmd(filepath+'/command.csv')
+        breakpoints,primitives,p_bp,q_bp=ms.extract_data_from_cmd(filepath+'/command.csv')
     except:
         print("Ecountering Error while reading cmd file.")
         print("Convert desired curve to command")
@@ -56,7 +56,8 @@ def error_descent(filepath,robot,robotMotionSend,velocity,desired_curve,desired_
     
     q_bp_start = q_bp[0][0]
     q_bp_end = q_bp[-1][-1]
-    primitives,p_bp,q_bp=extend_start_end(robot,q_bp,primitives,breakpoints,p_bp,extension_d=60)
+    p_bp,q_bp=ms.extend(robot,q_bp,primitives,breakpoints,p_bp)     ###TODO: fanuc interface extend
+    
 
     ## calculate step at start and end
     step_start1=None
@@ -75,7 +76,6 @@ def error_descent(filepath,robot,robotMotionSend,velocity,desired_curve,desired_
     ilc=ilc_toolbox(robot,primitives)
 
     ###TODO: align FANUC & ABB arguments
-    ms = robotMotionSend(self.robot1)
     draw_error_max=None
     draw_speed_max=None
     max_gradient_descent_flag = False
