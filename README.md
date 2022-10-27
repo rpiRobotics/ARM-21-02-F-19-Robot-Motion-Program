@@ -20,8 +20,8 @@ The GUI currently only support FANUC and ABB robot.
 ## Dependancies
 ### Robot Drivers:
 Robot drivers are python interface with robot controller. Follow instruction on github to install 
-* FANUC: github.com/eric565648/fanuc_motion_program_exec
-* ABB: github.com/johnwason/abb_motion_program_exec
+* [FANUC Driver](http://github.com/eric565648/fanuc_motion_program_exec)
+* [ABB Driver](http://github.com/johnwason/abb_motion_program_exec)
 ### Other pip packages (install through setup.py)
 * PyQt
 * Scipy
