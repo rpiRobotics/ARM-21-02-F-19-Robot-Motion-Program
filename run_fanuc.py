@@ -51,12 +51,13 @@ class Worker(QObject):
         self.duration=None
 
     def run(self):
-        try:
-            res = list(self.function(*self.args))
-        except Exception as e:
-            print("There is Error")
-            print(e)
-            res = []
+        # try:
+        #     res = list(self.function(*self.args))
+        # except Exception as e:
+        #     print("There is Error")
+        #     print(e)
+        #     res = []
+        res = list(self.function(*self.args))
         self.proc_finished.emit()
         while self.duration is None:
             time.sleep(0.01)
@@ -246,7 +247,7 @@ class SprayGUI(QDialog):
 
         if len(result) <= 1:
             run_duration=result[0]
-            self.run1_result.setText('Redundancy Resolution failed because of errors. Time:',time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            self.run1_result.setText('Redundancy Resolution failed because of errors. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             return
 
         curve_base,curve_normal_base,curve_js,H,run_duration=result

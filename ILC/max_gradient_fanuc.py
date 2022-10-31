@@ -64,7 +64,7 @@ def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
     
     q_bp_start = q_bp[0][0]
     q_bp_end = q_bp[-1][-1]
-    primitives,p_bp,q_bp=extend_start_end(robot,q_bp,primitives,breakpoints,p_bp,extension_d=60)
+    primitives,p_bp,q_bp=extend_start_end(robot,q_bp,primitives,breakpoints,p_bp,extension_d=100)
 
     ## calculate step at start and end
     step_start1=None
@@ -145,7 +145,6 @@ def max_grad_descent(filepath,robot,velocity,desired_curve,desired_curve_js,\
         #### save all things
         if save_all_file:
             # save fig
-            plt.legend()
             plt.savefig(ilc_output+'iteration_'+str(i))
             plt.savefig(ilc_output+'final_iteration')
             plt.clf()

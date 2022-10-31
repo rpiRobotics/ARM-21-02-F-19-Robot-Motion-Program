@@ -151,13 +151,22 @@ def extend_start_end(robot,q_bp,primitives,breakpoints,points_list,extension_d=1
         # R_start_new=rot(k,theta_new)@R_start
 
         # adding extension with uniform space
-        for i in range(1,step_to_extend+1):
-            p_extend=p_start-i*extend_step_d*slope_p
-            theta_extend=-np.linalg.norm(p_extend-p_start)*theta/np.linalg.norm(p_end-p_start)
-            R_extend=rot(k,theta_extend)@R_start
-            points_list.insert(0,[p_extend])
-            q_bp.insert(0,[car2js(robot,q_bp[0][0],p_extend,R_extend)[0]])
-            primitives.insert(1,'movel_fit')
+        the_very_start_p = p_start-step_to_extend*extend_step_d*slope_p
+        the_very_start_R = rot(k,-np.linalg.norm(the_very_start_p-p_start)*theta/np.linalg.norm(p_end-p_start))@R_start
+        if len(car2js(robot,q_bp[0][0],the_very_start_p,the_very_start_R)) < 0:
+            for i in range(1,step_to_extend+1):
+                p_extend=p_start-i*extend_step_d*slope_p
+                theta_extend=-np.linalg.norm(p_extend-p_start)*theta/np.linalg.norm(p_end-p_start)
+                R_extend=rot(k,theta_extend)@R_start
+                points_list.insert(0,[p_extend])
+                q_bp.insert(0,[car2js(robot,q_bp[0][0],p_extend,R_extend)[0]])
+                primitives.insert(1,'movel_fit')
+        else:
+            for i in range(1,step_to_extend+1):
+                p_extend=p_start-i*extend_step_d*slope_p
+                points_list.insert(0,[p_extend])
+                q_bp.insert(0,[car2js(robot,q_bp[0][0],p_extend,R_start)[0]])
+                primitives.insert(1,'movel_fit')
 
         #solve invkin for initial point
         # points_list[0][0]=p_start_new
@@ -218,13 +227,22 @@ def extend_start_end(robot,q_bp,primitives,breakpoints,points_list,extension_d=1
         # R_end_new=rot(k,theta_new)@R_end
 
         # adding extension with uniform space
-        for i in range(1,step_to_extend+1):
-            p_extend=p_end+i*extend_step_d*slope_p
-            theta_extend=np.linalg.norm(p_extend-p_end)*theta/np.linalg.norm(p_end-p_start)
-            R_extend=rot(k,theta_extend)@R_end
-            points_list.append([p_extend])
-            q_bp.append([car2js(robot,q_bp[0][0],p_extend,R_extend)[0]])
-            primitives.append('movel_fit')
+        the_very_end_p = p_end+step_to_extend*extend_step_d*slope_p
+        the_very_end_R = rot(k,np.linalg.norm(the_very_end_p-p_end)*theta/np.linalg.norm(p_end-p_start))@R_end
+        if len(car2js(robot,q_bp[0][0],the_very_end_p,the_very_end_R))>0:
+            for i in range(1,step_to_extend+1):
+                p_extend=p_end+i*extend_step_d*slope_p
+                theta_extend=np.linalg.norm(p_extend-p_end)*theta/np.linalg.norm(p_end-p_start)
+                R_extend=rot(k,theta_extend)@R_end
+                points_list.append([p_extend])
+                q_bp.append([car2js(robot,q_bp[0][0],p_extend,R_extend)[0]])
+                primitives.append('movel_fit')
+        else:
+            for i in range(1,step_to_extend+1):
+                p_extend=p_end+i*extend_step_d*slope_p
+                points_list.append([p_extend])
+                q_bp.append([car2js(robot,q_bp[0][0],p_extend,R_end)[0]])
+                primitives.append('movel_fit')
 
         #solve invkin for end point
         # q_bp[-1][-1]=car2js(robot,q_bp[-1][0],p_end_new,R_end_new)[0]

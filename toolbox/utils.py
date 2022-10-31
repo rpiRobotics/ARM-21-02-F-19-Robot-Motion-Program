@@ -211,13 +211,14 @@ def car2js(robot,q_init,curve_fit,curve_fit_R):
 	if curve_fit.shape==(3,):
 		q_all=np.array(robot.inv(curve_fit,curve_fit_R))
 
-		###choose inv_kin closest to previous joints
-		if len(curve_fit_js)>1:
-			temp_q=q_all-curve_fit_js[-1]
-		else:
-			temp_q=q_all-q_init
-		order=np.argsort(np.linalg.norm(temp_q,axis=1))
-		curve_fit_js.append(q_all[order[0]])
+		if len(q_all)!=0:
+			###choose inv_kin closest to previous joints
+			if len(curve_fit_js)>1:
+				temp_q=q_all-curve_fit_js[-1]
+			else:
+				temp_q=q_all-q_init
+			order=np.argsort(np.linalg.norm(temp_q,axis=1))
+			curve_fit_js.append(q_all[order[0]])
 	else:
 		for i in range(len(curve_fit)):
 			q_all=np.array(robot.inv(curve_fit[i],curve_fit_R[i]))
