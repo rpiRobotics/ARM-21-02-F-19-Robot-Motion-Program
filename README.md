@@ -43,7 +43,7 @@ Robot drivers are python interface with robot controller. Follow instruction on 
 ### Command
 * `command.csv`, [breakpoints,  primitives, p_bp(breakpoint xyz), q_bp(breakpoint  joint angle)]
 * `profile.csv`, dynamic blending  zone and segment velocity
-
+![](doc/figures/data_structure.jpg)
 
 ## Max Gradient and Iterative Learning Control (ILC)
 
