@@ -17,6 +17,9 @@ Please note that the GUI is an ongoing developed feature. Contact the authors fo
 
 The GUI currently only support FANUC and ABB robot.
 
+## Tesseract Visualization
+Once the GUI is running, on the browser type in `localhost:8000`, the Tesseract environment will be shown.
+
 ## Dependancies
 ### Robot Drivers:
 Robot drivers are python interface with robot controller. Follow instruction on github to install 
