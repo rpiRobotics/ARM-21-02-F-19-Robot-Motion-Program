@@ -4,17 +4,18 @@ import traceback
 
 def motion_program_update(filepath,robot,robotMotionSend,vel,desired_curve_filename,desired_curvejs_filename,\
     err_tol,angerr_tol,velstd_tol):
-    
-    curve = read_csv(desired_curve_filename,header=None).values
-    curve=np.array(curve)
-    curve_js = read_csv(desired_curvejs_filename,header=None).values
-    curve_js=np.array(curve_js)
+    try:
+        curve = read_csv(desired_curve_filename,header=None).values
+        curve=np.array(curve)
+        curve_js = read_csv(desired_curvejs_filename,header=None).values
+        curve_js=np.array(curve_js)
 
-    if 'abb' in robot.def_path:
-        return error_descent_abb(filepath,robot,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls')
-    if 'fanuc' in robot.def_path:
-        return error_descent_fanuc(filepath,robot,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls')
-
+        if 'ABB' in robot.def_path:
+            return error_descent_abb(filepath,robot,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls')
+        if 'FANUC' in robot.def_path:
+            return error_descent_fanuc(filepath,robot,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls')
+    except:
+        traceback.print_exc()
 
 def error_descent_abb(filepath,robot,robotMotionSend,velocity,desired_curve,desired_curve_js,\
     error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name=''):

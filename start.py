@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QSpinBox, QDoubleSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
-        QVBoxLayout, QWidget,QFileDialog)
+        QVBoxLayout, QWidget,QFileDialog, QMessageBox)
 from PyQt5.QtGui import QPixmap
 import sys,os,time,traceback
 from pathlib import Path
@@ -18,6 +18,8 @@ from toolbox.abb_utils import *
 from motion_update.motion_update import *
 from tes_env import *
 
+def msgbtn(i):
+    print ("Button pressed is:",i.text())
 # Timer Objecy
 class Timer(QObject):
     finished = pyqtSignal(float)
@@ -59,6 +61,7 @@ class Worker(QObject):
             res = list(self.function(*self.args))
         except:
             traceback.print_exc()
+            print('function returned None, check error in function call')
             res = []
         self.proc_finished.emit()
         while self.duration is None:
@@ -102,7 +105,7 @@ class SprayGUI(QDialog):
         self.visualizer=Tess_Visual('config/urdf/')
 
         # robot box
-        robot_list=['','m710ic','m900ia','m10ia','abb_1200_5_90','abb_6640_180_255']
+        robot_list=['','m710ic','m900ia','m10ia','ABB_1200_5_90','ABB_6640_180_255']
         self.robotComBox1=QComboBox()
         self.robotComBox1.addItems(robot_list)
         self.robotComBox1.currentTextChanged.connect(self.robot1_change)
@@ -167,9 +170,9 @@ class SprayGUI(QDialog):
             return
         else:
             self.robot1=robot_obj('config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc.pickle')
-            if 'abb' in robot1_choose:
+            if 'ABB' in robot1_choose:
                 self.robot1MotionSend=MotionSendABB    ###TODO: add realrobot argument (IP, repeatibility)
-            elif 'fanuc' in robot1_choose:
+            elif 'FANUC' in robot1_choose:
                 self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)           
         self.robot1_name=robot1_choose
         
@@ -421,6 +424,20 @@ class SprayGUI(QDialog):
             self.curvejs_pathname = os.path.dirname(self.curvejs_filename)
             self.curvejs_filenametext.setText(self.curvejs_filename)
     
+    def prog_Visualization(self,n):
+        
+        self.run3_result.setText('Running Visualization. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
+
+    def res_Visualization(self,result):
+
+        if len(result) <= 1:
+            run_duration=result[0]
+            self.run3_result.setText('Visualization Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            return
+
+        self.run3_result.setText('Visualzation on localhost:8000\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+
+
     def run_MotionProgGeneration_baseline(self):
 
         if self.robot1 is None:
@@ -579,11 +596,20 @@ class SprayGUI(QDialog):
         velstdlabel=QLabel('Velocity Std (%):')
         velstdlabel.setBuddy(self.vel_std_box)
 
-        self.moupdate_runButton=QPushButton("Run")
+
+        self.visual_runButton=QPushButton("Run Visualization")
+        self.visual_runButton.setDefault(True)
+        self.visual_runButton.clicked.connect(self.run_Visualization)
+        self.run3_result=QLabel('')
+
+
+        self.moupdate_runButton=QPushButton("Run Motion Update")
         self.moupdate_runButton.setDefault(True)
         self.moupdate_runButton.clicked.connect(self.run_MotionProgUpdate)
-        self.run3_result=QLabel('')
-        self.run3_result_img=QLabel('')
+        self.run4_result=QLabel('')
+        self.run4_result_img=QLabel('')
+
+        
 
         # boxes
         vellayout=QHBoxLayout()
@@ -609,9 +635,10 @@ class SprayGUI(QDialog):
         layout.addWidget(self.cmd_filenametext)
         layout.addLayout(vellayout)
         layout.addLayout(tollayout)
+        layout.addWidget(self.visual_runButton)
         layout.addWidget(self.moupdate_runButton)
-        layout.addWidget(self.run3_result)
-        layout.addWidget(self.run3_result_img)
+        layout.addWidget(self.run4_result)
+        layout.addWidget(self.run4_result_img)
         layout.addStretch(1)
         self.moProgUpRightBox.setLayout(layout)
     
@@ -651,20 +678,57 @@ class SprayGUI(QDialog):
             self.cmd_pathname = os.path.dirname(self.cmd_filename)
             self.cmd_filenametext.setText(self.cmd_filename)
     
-    def run_MotionProgUpdate(self):
-
+    def run_Visualization(self):
         if self.robot1 is None:
             self.run3_result.setText("Robot1 not yet choosed.")
-            return
-        if self.cmd_filenametext is None:
-            self.run3_result.setText("Command file not yet choosed.")
             return
         
         vel=int(self.vel_box.value())
         errtol=float(self.error_box.value())
         angerrtol=float(self.ang_error_box.value())
         velstdtol=float(self.vel_std_box.value())
-        self.run3_result.setText('Updating Motion Program')
+        self.run3_result.setText('Running Visualization')
+        # qthread for motion update
+        self.visual_thread=QThread()
+        self.visual_timer_thread=QThread()
+        self.visual_timer=Timer()
+
+        curve_js=np.loadtxt(self.des_curvejs_filename,delimiter=',')
+        try:    ###TODO: add error box popup
+            self.visual_worker=Worker(self.visualizer.viewer_trajectory,self.robot1_name,curve_js[::100])
+            self.visual_worker,self.visual_thread,self.visual_timer,self.visual_timer_thread=\
+                setup_worker_timer(self.visual_worker,self.visual_thread,self.visual_timer,self.visual_timer_thread,self.prog_Visualization,self.res_Visualization)
+        except:
+            traceback.print_exc()
+            self.showdialog(traceback.format_exc())
+
+        ## edit interface
+        self.visual_runButton.setEnabled(False)
+
+        ## final result setup
+        self.visual_thread.finished.connect(lambda: self.visual_runButton.setEnabled(True))
+
+        ## start thread
+        self.visual_timer_thread.start()
+        self.visual_thread.start()
+
+
+
+    def run_MotionProgUpdate(self):
+
+        if self.robot1 is None:
+            self.run4_result.setText("Robot1 not yet choosed.")
+            return
+
+        if self.cmd_filename is None:
+            self.run4_result.setText("Command file not yet choosed.")
+            return
+        
+        vel=int(self.vel_box.value())
+        errtol=float(self.error_box.value())
+        angerrtol=float(self.ang_error_box.value())
+        velstdtol=float(self.vel_std_box.value())
+        self.run4_result.setText('Updating Motion Program')
 
         ## delete previous tmp result
         all_files=os.listdir(self.cmd_pathname)
@@ -680,7 +744,7 @@ class SprayGUI(QDialog):
             if 'final_iteration.png' in all_files:
                 os.remove(output_dir+'final_iteration.png')
         
-        # qthread for redundancy resolution
+        # qthread for motion update
         self.moupdate_thread=QThread()
         self.moupdate_timer_thread=QThread()
         self.moupdate_timer=Timer()
@@ -731,19 +795,19 @@ class SprayGUI(QDialog):
             angle_error=np.load(output_dir+'final_ang_error.npy')
         if 'final_iteration.png' in all_files:
             pixmap=QPixmap(output_dir+'final_iteration.png')
-            self.run3_result_img.setPixmap(pixmap)
+            self.run4_result_img.setPixmap(pixmap)
         
         result_text='Updating Motion Program. Time:'+time.strftime("%H:%M:%S", time.gmtime(n))
         if speed is not None and error is not None and angle_error is not None:
             result_text+='\nCurrent Max Error:'+str(round(np.max(error),2))+' mm, Max Ang Error:'+str(round(np.max(angle_error),2))+' deg'+\
                 '\nAve. Speed:'+str(round(np.mean(speed),2))+' mm/sec, Std. Speed:'+str(round(np.std(speed),2))+' mm/sec, Std/Ave Speed:'+str(round(100*np.std(speed)/np.mean(speed),2))+' %'
-        self.run3_result.setText(result_text)
+        self.run4_result.setText(result_text)
 
     def res_MotionProgUpdate(self,result):
 
         if len(result) <= 1:
             run_duration=result[0]
-            self.run3_result.setText('Motion Program Update. Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            self.run4_result.setText('Motion Program Update. Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             return
 
         curve_exe_js,speed,error,angle_error,breakpoints,primitives,q_bp,p_bp,run_duration=result
@@ -759,7 +823,7 @@ class SprayGUI(QDialog):
             '\nCommand file saved at\n'+self.cmd_pathname+'/result_speed_'+str(vel)
         result_text+='\nMax Error:'+str(round(np.max(error),2))+' mm, Max Ang Error:'+str(round(np.max(angle_error),2))+' deg'+\
             '\nAve. Speed:'+str(round(np.mean(speed),2))+' mm/sec, Std. Speed:'+str(round(np.std(speed),2))+' mm/sec, Std/Ave Speed:'+str(round(100*np.std(speed)/np.mean(speed),2))+' %'
-        self.run3_result.setText(result_text)
+        self.run4_result.setText(result_text)
 
 
 

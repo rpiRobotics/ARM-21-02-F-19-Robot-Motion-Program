@@ -2,24 +2,18 @@
 from tesseract_robotics.tesseract_environment import Environment, ChangeJointOriginCommand
 from tesseract_robotics import tesseract_geometry
 from tesseract_robotics.tesseract_common import Isometry3d, CollisionMarginData, Translation3d, Quaterniond, \
-    ManipulatorInfo
+	ManipulatorInfo
 from tesseract_robotics import tesseract_collision
 from tesseract_robotics_viewer import TesseractViewer
-###planner
-from tesseract_robotics.tesseract_command_language import CartesianWaypoint, Waypoint, \
-    MoveInstructionType_FREESPACE, MoveInstructionType_START, MoveInstruction, Instruction, \
-    CompositeInstruction, flatten
-from tesseract_robotics.tesseract_process_managers import ProcessPlanningServer, ProcessPlanningRequest, \
-    FREESPACE_PLANNER_NAME
 
 import RobotRaconteur as RR
 RRN=RR.RobotRaconteurNode.s
-import yaml, time, traceback, threading, sys
+import yaml, time, traceback, threading, sys, json
 import numpy as np
 from qpsolvers import solve_qp
 from scipy.optimize import fminbound
 
-sys.path.append('../toolbox')
+sys.path.append('toolbox')
 from gazebo_model_resource_locator import GazeboModelResourceLocator
 from robots_def import *
 
@@ -34,10 +28,10 @@ class Tess_Visual(object):
 	def __init__(self,urdf_path):
 
 		#link and joint names in urdf
-		ABB_6640_180_255_joint_names=["ABB_6640_180_255_joint_1","ABB_6640_180_255_joint_1","ABB_6640_180_255_joint_1","ABB_6640_180_255_joint_1","ABB_6640_180_255_joint_1","ABB_6640_180_255_joint_1"]
+		ABB_6640_180_255_joint_names=["ABB_6640_180_255_joint_1","ABB_6640_180_255_joint_2","ABB_6640_180_255_joint_3","ABB_6640_180_255_joint_4","ABB_6640_180_255_joint_5","ABB_6640_180_255_joint_6"]
 		ABB_6640_180_255_link_names=["ABB_6640_180_255_link_1","ABB_6640_180_255_link_2","ABB_6640_180_255_link_3","ABB_6640_180_255_link_4","ABB_6640_180_255_link_5","ABB_6640_180_255_link_6","ABB_6640_180_255_tool"]
 		ABB_1200_5_90_joint_names=['ABB_1200_5_90_joint_1','ABB_1200_5_90_joint_2','ABB_1200_5_90_joint_3','ABB_1200_5_90_joint_4','ABB_1200_5_90_joint_5','ABB_1200_5_90_joint_6']
-		ABB_1200_5_90_link_names=['ABB_1200_5_90_link_1','ABB_1200_5_90_link_1','ABB_1200_5_90_link_1','ABB_1200_5_90_link_1','ABB_1200_5_90_link_1','ABB_1200_5_90_link_1']
+		ABB_1200_5_90_link_names=['ABB_1200_5_90_link_1','ABB_1200_5_90_link_2','ABB_1200_5_90_link_3','ABB_1200_5_90_link_4','ABB_1200_5_90_link_5','ABB_1200_5_90_link_6']
 
 		#Robot dictionaries, all reference by name
 		self.robot_linkname={'ABB_6640_180_255':ABB_6640_180_255_link_names,'ABB_1200_5_90':ABB_1200_5_90_link_names}
@@ -70,12 +64,14 @@ class Tess_Visual(object):
 
 		self.viewer.start_serve_background()
 
-	def update_pose(model_name,H):
+	def update_pose(self,model_name,H):
 		###update model pose in tesseract environment
-		cmd = ChangeJointOriginCommand(model_name+'_pose', Isometry3d(H_Sawyer))
+		cmd = ChangeJointOriginCommand(model_name+'_pose', Isometry3d(H))
 		self.t_env.applyCommand(cmd)
+		#refresh
+		self.viewer.update_environment(self.t_env)
 
-	def check_collision_single(robot_name,part_name,curve_js):
+	def check_collision_single(self,robot_name,part_name,curve_js):
 		###check collision for a single robot, including self collision and collision with part
 
 		###iterate all joints config 
@@ -105,40 +101,29 @@ class Tess_Visual(object):
 	def viewer_joints_update(self,robot_name,joints):
 		self.viewer.update_joint_positions(self.robot_jointname[robot_name], np.array(joints))
 
-	def viewer_trajectory(self,robot_name,lam,curve_js):
-		return
+	def viewer_trajectory(self,robot_name,curve_js):
+		trajectory_json = dict()
+		trajectory_json["use_time"] = True
+		trajectory_json["loop_time"] = 20
+		trajectory_json["joint_names"] = self.robot_jointname[robot_name]
+		trajectory2 = np.hstack((curve_js,np.linspace(0,10,num=len(curve_js))[np.newaxis].T))
+		trajectory_json["trajectory"] = trajectory2.tolist()
+		self.viewer.trajectory_json=json.dumps(trajectory_json)
+
 
 def main():
 
 
-	visualizer=Tess_Visual()				#create obj
+	visualizer=Tess_Visual('config/urdf/')				#create obj
 	
-	# wp1 = CartesianWaypoint(Isometry3d.Identity() * Translation3d(0.8,-0.3,1.455) * Quaterniond(0.70710678,0,0.70710678,0))
-	# wp2 = CartesianWaypoint(Isometry3d.Identity() * Translation3d(0.8,0.3,1.455) * Quaterniond(0.70710678,0,0.70710678,0))
-	# wp3 = CartesianWaypoint(Isometry3d.Identity() * Translation3d(0.8,0.3,1) * Quaterniond(0.70710678,0,0.70710678,0))
-
-	# start_instruction = MoveInstruction(Waypoint(wp1), MoveInstructionType_START, "DEFAULT")
-	# plan_f1 = MoveInstruction(Waypoint(wp2), MoveInstructionType_FREESPACE, "DEFAULT")
-
-	# program = CompositeInstruction("DEFAULT")
-	# program.setStartInstruction(Instruction(start_instruction))
-	# program.append(Instruction(plan_f1))
-
-	# planning_server = ProcessPlanningServer(visualizer.t_env, 1)
-	# planning_server.loadDefaultProcessPlanners()
-	# request = ProcessPlanningRequest()
-	# request.name = FREESPACE_PLANNER_NAME
-	# request.instructions = Instruction(program)
-
-	# response = planning_server.run(request)
-	# planning_server.waitForAll()
-
-	# assert response.interface.isSuccessful()
-
-	# results = flatten(response.problem.getResults().as_CompositeInstruction())
-
-	# visualizer.viewer.update_trajectory(results)
-
+	###place part in place
+	curve_pose=np.loadtxt('data/wood/baseline/curve_pose.csv',delimiter=',')
+	curve_pose[:3,-1]=curve_pose[:3,-1]/1000.
+	visualizer.update_pose('curve_1',curve_pose)
+	
+	###visualize trajectory
+	curve_js=np.loadtxt('data/wood/baseline/Curve_js.csv',delimiter=',')
+	visualizer.viewer_trajectory('ABB_6640_180_255',curve_js[::100])
 	input("Press enter to quit")
 	#stop background checker
 	

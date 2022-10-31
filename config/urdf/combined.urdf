@@ -41,7 +41,7 @@
     </collision> -->
     <visual name="visual">
       <geometry>
-        <mesh filename="model://curve_1/meshes/wood.stl" scale="0.05 0.05 0.05"/>
+        <mesh filename="model://curve_1/meshes/wood.stl" scale="0.032 0.032 0.032"/>
       </geometry>
       <material name="orange">
         <color rgba=".04 .42 1 1"/>
@@ -64,7 +64,7 @@
     </collision> -->
     <visual name="visual">
       <geometry>
-        <mesh filename="model://curve_2/meshes/generic_fan_blade.stl" scale="0.05 0.05 0.05"/>
+        <mesh filename="model://curve_2/meshes/generic_fan_blade.stl" scale="0.032 0.032 0.032"/>
       </geometry>
       <material name="orange">
         <color rgba=".04 .42 1 1"/>
@@ -338,7 +338,7 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://paintgun/meshes/paint_gun.stl" scale="0.04 0.04 0.04"/>
+        <mesh filename="model://paintgun/meshes/paint_gun.stl" scale="0.032 0.032 0.032"/>
       </geometry>
       <material name="orange"/>
     </visual>
