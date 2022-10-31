@@ -1,6 +1,6 @@
 from .ilc_toolbox import *
 from pathlib import Path
-
+import traceback
 
 def motion_program_update(filepath,robot,robotMotionSend,vel,desired_curve_filename,desired_curvejs_filename,\
     err_tol,angerr_tol,velstd_tol):
@@ -10,9 +10,13 @@ def motion_program_update(filepath,robot,robotMotionSend,vel,desired_curve_filen
     curve_js = read_csv(desired_curvejs_filename,header=None).values
     curve_js=np.array(curve_js)
 
-    return error_descent(filepath,robot,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls')
+    if 'abb' in robot.def_path:
+        return error_descent_abb(filepath,robot,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls')
+    if 'fanuc' in robot.def_path:
+        return error_descent_fanuc(filepath,robot,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls')
 
-def error_descent(filepath,robot,robotMotionSend,velocity,desired_curve,desired_curve_js,\
+
+def error_descent_abb(filepath,robot,robotMotionSend,velocity,desired_curve,desired_curve_js,\
     error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name=''):
 
     curve=desired_curve
@@ -22,77 +26,41 @@ def error_descent(filepath,robot,robotMotionSend,velocity,desired_curve,desired_
     Path(ilc_output).mkdir(exist_ok=True)
 
     ms = robotMotionSend()
-    try:
-        breakpoints,primitives,p_bp,q_bp=ms.extract_data_from_cmd(filepath+'/command.csv')
-    except:
-        print("Ecountering Error while reading cmd file.")
-        print("Convert desired curve to command")
 
-        total_seg = 100
-        step=int((len(curve_js)-1)/total_seg)
-        breakpoints = [0]
-        primitives = ['movej_fit']
-        q_bp = [[curve_js[0]]]
-        p_bp = [[robot.fwd(curve_js[0]).p]]
-        for i in range(step,len(curve_js),step):
-            breakpoints.append(i)
-            primitives.append('movel_fit')
-            q_bp.append([curve_js[i]])
-            p_bp.append([robot.fwd(curve_js[i]).p])
-        
-        # df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'points':p_bp,'q_bp':q_bp})
-        # df.to_csv(filepath+'/command.csv',header=True,index=False)
+    breakpoints,primitives,p_bp,q_bp=ms.extract_data_from_cmd(filepath+'/command.csv')
+
 
     alpha = 0.5 # for gradient descent
     alpha_error_dir = 0.8 # for pushing in error direction
 
     ### speed,zone
-    s = velocity
-    z = 100 # zone (corner path), CNT100
+    s = speeddata(velocity,9999999,9999999,999999)
+    zone=10
+    z = zonedata(False,zone,1.5*zone,1.5*zone,0.15*zone,1.5*zone,0.15*zone) # zone (corner path), CNT100
 
     ### Gradient descent parameters
     multi_peak_threshold=0.2 # decreasing peak higher than threshold
     alpha = 0.5 # gradient descentz step size
     
-    q_bp_start = q_bp[0][0]
-    q_bp_end = q_bp[-1][-1]
-    p_bp,q_bp=ms.extend(robot,q_bp,primitives,breakpoints,p_bp)     ###TODO: fanuc interface extend
-    
-
-    ## calculate step at start and end
-    step_start1=None
-    step_end1=None
-    for i in range(len(q_bp)):
-        if np.all(q_bp[i][0]==q_bp_start):
-            step_start1=i
-        if np.all(q_bp[i][-1]==q_bp_end):
-            step_end1=i
-
-    assert step_start1 is not None,'Cant find step start'
-    assert step_end1 is not None,'Cant find step start'
-    print(step_start1,step_end1)
+    p_bp,q_bp=ms.extend(robot,q_bp,primitives,breakpoints,p_bp)  
 
     ###ilc toolbox def
     ilc=ilc_toolbox(robot,primitives)
 
-    ###TODO: align FANUC & ABB arguments
     draw_error_max=None
     draw_speed_max=None
     max_gradient_descent_flag = False
     max_error_prev = 999999999
     for i in range(iteration_max):
-        
-        ###execute,curve_fit_js only used for orientation
-        logged_data=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z,save_ls,ilc_output+save_name)
 
-        # print(logged_data)
-        StringData=StringIO(logged_data.decode('utf-8'))
-        df = read_csv(StringData)
+        ###execute,curve_fit_js only used for orientation       ###TODO: add save_ls
+        log_results=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z)#,save_ls,ilc_output+save_name)
+
         ##############################data analysis#####################################
-        lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.logged_data_analysis(robot,df)
+        lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.logged_data_analysis(robot,log_results)
 
         #############################chop extension off##################################
-        lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.chop_extension(curve_exe, curve_exe_R,curve_exe_js, speed, timestamp,curve[:,:3],curve[:,3:])
+        lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.chop_extension(curve_exe, curve_exe_R,curve_exe_js, speed, timestamp,curve[0,:3],curve[-1,:3])
         ave_speed=np.mean(speed)
         std_speed=np.std(speed)
 
@@ -169,49 +137,10 @@ def error_descent(filepath,robot,robotMotionSend,velocity,desired_curve,desired_
         if max(error) > max_error_prev:
             max_gradient_descent_flag = True
 
-        p_bp1_update = deepcopy(p_bp)
-        q_bp1_update = deepcopy(q_bp)
         if not max_gradient_descent_flag: # update through push in error direction
             ##########################################calculate error direction and push######################################
-            ### interpolate curve (get gradient direction)
-            curve_target = np.zeros((len(curve_exe), 3))
-            curve_target_R = np.zeros((len(curve_exe), 3))
-            for j in range(len(curve_exe)):
-                dist = np.linalg.norm(curve[:,:3] - curve_exe[j], axis=1)
-                closest_point_idx = np.argmin(dist)
-                curve_target[j, :] = curve[closest_point_idx, :3]
-                curve_target_R[j, :] = curve[closest_point_idx, 3:]
-
-            ### get error (and transfer into robot1 frame)
-            error1 = []
-            angle_error1 = []
-            for j in range(len(curve_exe)):
-                ## calculate error
-                error1.append(curve_target[j]-curve_exe[j])
-                # angle_error1.append(get_angle(curve_exe_R1[j][:,-1], this_curve_target_R1))
-                angle_error1.append(curve_target_R[j]-curve_exe_R[j][:,-1])
-
-            ### get closets bp index
-            p_bp1_error_dir=[]
-            p_bp1_ang_error_dir=[]
-            # find error direction
-            for j in range(step_start1, step_end1+1): # exclude first and the last bp and the bp for extension
-                this_p_bp = p_bp[j]
-                closest_point_idx = np.argmin(np.linalg.norm(curve_target - this_p_bp, axis=1))
-                error_dir = error1[closest_point_idx]
-                p_bp1_error_dir.append(error_dir)
-                ang_error_dir = angle_error1[closest_point_idx]
-                p_bp1_ang_error_dir.append(ang_error_dir)
-            
-            ### update all p_bp1
-            for j in range(step_start1,step_end1+1):
-                p_bp1_update[j][-1] = np.array(p_bp[j][-1]) + alpha_error_dir*p_bp1_error_dir[j-step_start1]
-                bp1_R = robot.fwd(q_bp[j][-1]).R
-                # bp1_R[:,-1] = (bp1_R[:,-1] + alpha_error_dir*p_bp1_ang_error_dir[j-step_start1])/np.linalg.norm((bp1_R[:,-1] + alpha_error_dir*p_bp1_ang_error_dir[j-step_start1]))
-                q_bp1_update[j][-1] = car2js(robot, q_bp[j][-1], p_bp1_update[j][-1], bp1_R)[0]
-            
-            p_bp = deepcopy(p_bp1_update)
-            q_bp = deepcopy(q_bp1_update)
+            error_bps_v,error_bps_w=ilc.get_error_direction(curve,p_bp,q_bp,curve_exe,curve_exe_R)
+            p_bp, q_bp=ilc.update_error_direction(curve,p_bp,q_bp,error_bps_v,error_bps_w)
         else:
             ##########################################calculate gradient######################################
             ######gradient calculation related to nearest 3 points from primitive blended trajectory, not actual one
@@ -230,9 +159,16 @@ def error_descent(filepath,robot,robotMotionSend,velocity,desired_curve,desired_
                 ###############get numerical gradient#####
                 ###find closest 3 breakpoints
                 order=np.argsort(np.abs(breakpoints_blended-peak_error_curve_blended_idx))
-                breakpoint_interp_2tweak_indices=order[:3]
+                breakpoint_interp_2tweak_indices=order[:2]
 
-                de_dp=ilc.get_gradient_from_model_xyz_fanuc(p_bp,q_bp,breakpoints_blended,curve_blended,peak_error_curve_blended_idx,robot.fwd(curve_exe_js[peak]),curve[peak_error_curve_idx,:3],breakpoint_interp_2tweak_indices,ave_speed)
-                p_bp, q_bp=ilc.update_bp_xyz(p_bp,q_bp,de_dp,error[peak],breakpoint_interp_2tweak_indices,alpha=alpha)
+                peak_pose=robot.fwd(curve_exe_js[peak])
+                ##################################################################XYZ Gradient######################################################################
+                de_dp=ilc.get_gradient_from_model_xyz(p_bp,q_bp,breakpoints_blended,curve_blended,peak_error_curve_blended_idx,peak_pose,curve[peak_error_curve_idx,:3],breakpoint_interp_2tweak_indices)
+                p_bp, q_bp=ilc.update_bp_xyz(p_bp,q_bp,de_dp,error[peak],breakpoint_interp_2tweak_indices)
+
+
+                ##################################################################Ori Gradient######################################################################
+                de_ori_dp=ilc.get_gradient_from_model_ori(p_bp,q_bp,breakpoints_blended,curve_blended_R,peak_error_curve_blended_idx,peak_pose,curve[peak_error_curve_idx,3:],breakpoint_interp_2tweak_indices)
+                q_bp=ilc.update_bp_ori(p_bp,q_bp,de_ori_dp,angle_error[peak],breakpoint_interp_2tweak_indices)
     
     return curve_exe_js,speed,error,np.rad2deg(angle_error),breakpoints,primitives,q_bp,p_bp

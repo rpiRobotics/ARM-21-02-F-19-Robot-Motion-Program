@@ -16,6 +16,7 @@ from cmd_gen.cmd_gen import *
 from toolbox.abb_utils import *
 # from toolbox.fanuc_utils import *
 from motion_update.motion_update import *
+from tes_env import *
 
 # Timer Objecy
 class Timer(QObject):
@@ -97,6 +98,9 @@ class SprayGUI(QDialog):
 
         self.originalPalette = QApplication.palette()
 
+        ###tesseract visualizer
+        self.visualizer=Tess_Visual('config/urdf/')
+
         # robot box
         robot_list=['','m710ic','m900ia','m10ia','abb_1200_5_90','abb_6640_180_255']
         self.robotComBox1=QComboBox()
@@ -172,6 +176,20 @@ class SprayGUI(QDialog):
     def robot2_change(self,robot2_choose):
         print("Robot2 not supported now.")
     
+    def showdialog(self,message):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+
+        msg.setText("This is a message box")
+        msg.setInformativeText("This is additional information")
+        msg.setWindowTitle("MessageBox demo")
+        msg.setDetailedText("The details are as follows:")
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        msg.buttonClicked.connect(msgbtn)
+
+        retval = msg.exec_()
+
+
     def redundancyResLeft(self):
 
         # Group Box
@@ -190,7 +208,7 @@ class SprayGUI(QDialog):
         self.v_cmd_box.setMinimum(100)
         self.v_cmd_box.setMaximum(2000)
         self.v_cmd_box.setValue(500)
-        self.v_cmd_box.setSingleStep(100)
+        self.v_cmd_box.setSingleStep(50)
         v_cmd_qt=QLabel('Threshold:')
         v_cmd_qt.setBuddy(self.v_cmd_box)
 
@@ -486,7 +504,7 @@ class SprayGUI(QDialog):
         save_filepath=self.curvejs_pathname+'/'+str(int(self.total_seg_box.value()))+'L/'
         Path(save_filepath).mkdir(exist_ok=True)
         # save motion program commands
-        df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'points':p_bp,'q_bp':q_bp})
+        df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
         df.to_csv(save_filepath+'command.csv',header=True,index=False)
 
         self.run2_result.setText('Motion Program Generated\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
@@ -503,7 +521,7 @@ class SprayGUI(QDialog):
         save_filepath=self.curvejs_pathname+'/greedy'+str(self.greedy_thresh_box.value())+'/'
         Path(save_filepath).mkdir(exist_ok=True)
         # save motion program commands
-        df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'points':p_bp,'q_bp':q_bp})
+        df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
         df.to_csv(save_filepath+'command.csv',header=True,index=False)
 
         self.run2_result.setText('Motion Program Generated\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
@@ -534,7 +552,8 @@ class SprayGUI(QDialog):
         self.vel_box = QSpinBox()
         self.vel_box.setMinimum(1)
         self.vel_box.setMaximum(2000)
-        self.vel_box.setValue(700)
+        self.vel_box.setValue(500)
+        self.vel_box.setSingleStep(10)
         vellabel=QLabel('Robot Velocity:')
         vellabel.setBuddy(self.vel_box)
 
@@ -665,12 +684,15 @@ class SprayGUI(QDialog):
         self.moupdate_thread=QThread()
         self.moupdate_timer_thread=QThread()
         self.moupdate_timer=Timer()
-        self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs_filename,\
-            errtol,angerrtol,velstdtol)
 
-        self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
-            setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\
-                self.prog_MotionProgUpdate,self.res_MotionProgUpdate)
+        try:    ###TODO: add error box popup
+            self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs_filename,\
+                errtol,angerrtol,velstdtol)
+            self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
+                setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\
+                    self.prog_MotionProgUpdate,self.res_MotionProgUpdate)
+        except:
+            self.showdialog(traceback.format_exc())
 
         ## edit interface
         self.moupdate_runButton.setEnabled(False)
@@ -728,8 +750,8 @@ class SprayGUI(QDialog):
         vel=int(self.vel_box.value())
 
         # save motion program commands
-        # df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'points':p_bp,'q_bp':q_bp})
-        df=DataFrame({'primitives':primitives,'points':p_bp,'q_bp':q_bp})
+        # df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
+        df=DataFrame({'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
         df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command.csv',header=True,index=False)
         DataFrame(curve_exe_js).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js_exe.csv',header=False,index=False)
 
