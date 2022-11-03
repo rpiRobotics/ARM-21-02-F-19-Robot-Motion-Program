@@ -14,7 +14,7 @@ from toolbox.robot_def import *
 from redundancy_resolution.redundancy_resolution import *
 from cmd_gen.cmd_gen import *
 from toolbox.abb_utils import *
-# from toolbox.fanuc_utils import *
+from toolbox.fanuc_utils import *
 from motion_update.motion_update import *
 from toolbox.tes_env import *
 
@@ -125,6 +125,8 @@ class SprayGUI(QDialog):
         ###ROBOT CONTROLLER IP
         IPlabel=QLabel("ROBOT IP:")
         self.robot_ip_box=QLineEdit('127.0.0.1')
+        self.robot_ip_box.setFixedWidth(100)
+
         IPlabel.setBuddy(self.robot_ip_box)
         ip_set_button=QPushButton('Set IP')
         ip_set_button.setDefault(False)
@@ -232,7 +234,7 @@ class SprayGUI(QDialog):
         self.v_cmd_box.setMaximum(2000)
         self.v_cmd_box.setValue(500)
         self.v_cmd_box.setSingleStep(50)
-        v_cmd_qt=QLabel('Threshold:')
+        v_cmd_qt=QLabel('Aggressive Velocity')
         v_cmd_qt.setBuddy(self.v_cmd_box)
 
         self.redres_diffevo_runButton=QPushButton("Run DiffEvo (>1day, needs to run baseline first)")
@@ -246,6 +248,7 @@ class SprayGUI(QDialog):
         layout.addWidget(filebutton)
         layout.addWidget(self.curve_filenametext)
         layout.addWidget(self.redres_baseline_runButton)
+        layout.addWidget(v_cmd_qt)
         layout.addWidget(self.v_cmd_box)
         layout.addWidget(self.redres_diffevo_runButton)
         layout.addWidget(self.run1_result)
