@@ -13,9 +13,9 @@
     <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
     <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
 
-    <group name="ABB1200">
+    <group name="ABB_1200">
       <chain base_link="ABB_1200_5_90_base_link" tip_link="ABB_1200_5_90_link_6"/>
-      <group_state name="all_zero" group="ABB">
+      <group_state name="all_zero" group="ABB_1200">
           <joint name="ABB_1200_5_90_joint_1" value="0" />
           <joint name="ABB_1200_5_90_joint_2" value="0" />
           <joint name="ABB_1200_5_90_joint_3" value="0" />
@@ -25,15 +25,39 @@
       </group_state>
     </group>
 
-    <group name="ABB6640">
+    <group name="ABB_6640">
       <chain base_link="ABB_6640_180_255_base_link" tip_link="ABB_6640_180_255_link_6"/>
-      <group_state name="all_zero" group="ABB">
+      <group_state name="all_zero" group="ABB_6640">
           <joint name="ABB_6640_180_255_joint_1" value="0" />
           <joint name="ABB_6640_180_255_joint_2" value="0" />
           <joint name="ABB_6640_180_255_joint_3" value="0" />
           <joint name="ABB_6640_180_255_joint_4" value="0" />
           <joint name="ABB_6640_180_255_joint_5" value="0" />
           <joint name="ABB_6640_180_255_joint_6" value="0" />
+      </group_state>
+    </group>
+
+    <group name="FANUC_lrmate200id">
+      <chain base_link="FANUC_lrmate200id_base_link" tip_link="FANUC_lrmate200id_link_6"/>
+      <group_state name="all_zero" group="FANUC_lrmate200id">
+          <joint name="FANUC_lrmate200id_joint_1" value="0" />
+          <joint name="FANUC_lrmate200id_joint_2" value="0" />
+          <joint name="FANUC_lrmate200id_joint_3" value="0" />
+          <joint name="FANUC_lrmate200id_joint_4" value="0" />
+          <joint name="FANUC_lrmate200id_joint_5" value="0" />
+          <joint name="FANUC_lrmate200id_joint_6" value="0" />
+      </group_state>
+    </group>
+
+    <group name="FANUC_m10ia">
+      <chain base_link="FANUC_m10ia_base_link" tip_link="FANUC_m10ia_link_6"/>
+      <group_state name="all_zero" group="FANUC_m10ia">
+          <joint name="FANUC_m10ia_joint_1" value="0" />
+          <joint name="FANUC_m10ia_joint_2" value="0" />
+          <joint name="FANUC_m10ia_joint_3" value="0" />
+          <joint name="FANUC_m10ia_joint_4" value="0" />
+          <joint name="FANUC_m10ia_joint_5" value="0" />
+          <joint name="FANUC_m10ia_joint_6" value="0" />
       </group_state>
     </group>
   <!--GROUP STATES: Purpose: Define a named state for a particular group, in
@@ -66,5 +90,27 @@
   <disable_collisions link1="ABB_6640_180_255_link_3" link2="ABB_6640_180_255_link_6" reason="Never" />
   <disable_collisions link1="ABB_6640_180_255_link_4" link2="ABB_6640_180_255_link_5" reason="Adjacent" />
   <disable_collisions link1="ABB_6640_180_255_link_5" link2="ABB_6640_180_255_link_6" reason="Adjacent" />
+  <!-- FANUC_lrmate200id -->
+  <disable_collisions link1="FANUC_lrmate200id_base_link" link2="FANUC_lrmate200id_link_1" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_1" link2="FANUC_lrmate200id_link_2" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_2" link2="FANUC_lrmate200id_link_3" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_2" link2="FANUC_lrmate200id_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_lrmate200id_link_2" link2="FANUC_lrmate200id_link_6" reason="Never" />
+  <disable_collisions link1="FANUC_lrmate200id_link_3" link2="FANUC_lrmate200id_link_4" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_3" link2="FANUC_lrmate200id_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_lrmate200id_link_3" link2="FANUC_lrmate200id_link_6" reason="Never" />
+  <disable_collisions link1="FANUC_lrmate200id_link_4" link2="FANUC_lrmate200id_link_5" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_5" link2="FANUC_lrmate200id_link_6" reason="Adjacent" />
+  <!-- FANUC_m10ia -->
+  <disable_collisions link1="FANUC_m10ia_base_link" link2="FANUC_m10ia_link_1" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_1" link2="FANUC_m10ia_link_2" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_2" link2="FANUC_m10ia_link_3" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_2" link2="FANUC_m10ia_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_link_2" link2="FANUC_m10ia_link_6" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_link_3" link2="FANUC_m10ia_link_4" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_3" link2="FANUC_m10ia_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_link_3" link2="FANUC_m10ia_link_6" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_link_4" link2="FANUC_m10ia_link_5" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_5" link2="FANUC_m10ia_link_6" reason="Adjacent" />
 
 </robot>

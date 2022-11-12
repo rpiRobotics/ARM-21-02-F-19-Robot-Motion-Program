@@ -7,41 +7,52 @@
   <!--robots pose-->
   <link name="world"/>
 
-  <joint name="abb_6640_180_255_pose" type="fixed">
+  <joint name="ABB_6640_180_255_pose" type="fixed">
     <parent link="world"/>
     <child link="ABB_6640_180_255_base_link"/>
-    <origin rpy="0.0 0.0 0.0" xyz="0 0 0.0"/><!--abb_6640_180_255 pedestal-->
+    <origin rpy="0.0 0.0 0.0" xyz="5.0 0 5.0"/><!--ABB_6640_180_255 pedestal-->
   </joint>
 
-  <joint name="abb_1200_5_90_pose" type="fixed">
+  <joint name="ABB_1200_5_90_pose" type="fixed">
     <parent link="world"/>
-    <child link="abb_1200_5_90_pedestal"/>
-    <origin rpy="0.0 0.0 0.0" xyz="0 5.0 5.0"/><!--abb_1200_5_90 pedestal-->
+    <child link="ABB_1200_5_90_pedestal"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0 5.0 5.0"/><!--ABB_1200_5_90 pedestal-->
+  </joint>
+  
+  <joint name="FANUC_m10ia_pose" type="fixed">
+    <parent link="world"/>
+    <child link="FANUC_m10ia_base_link"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0 0.0 5.0"/><!--ABB_1200_5_90 pedestal-->
+  </joint>
+  
+  <joint name="FANUC_lrmate200id_pose" type="fixed">
+    <parent link="world"/>
+    <child link="FANUC_lrmate200id_base_link"/>
+    <origin rpy="0.0 0.0 0.0" xyz="0 -5.0 5.0"/><!--ABB_1200_5_90 pedestal-->
   </joint>
 
   <joint name="curve_1_pose" type="fixed">
     <parent link="world"/>
     <child link="curve_1_base_link"/>
-    <origin rpy="0.0 0.0 0.0" xyz="0 2.0 0.0"/><!--abb_1200_5_90 pedestal-->
+    <origin rpy="0.0 0.0 0.0" xyz="0 2.0 0.0"/><!--ABB_1200_5_90 pedestal-->
   </joint>
   <joint name="curve_2_pose" type="fixed">
     <parent link="world"/>
     <child link="curve_2_base_link"/>
-    <origin rpy="0.0 0.0 0.0" xyz="0 -2.0 0.0"/><!--abb_1200_5_90 pedestal-->
+    <origin rpy="0.0 0.0 0.0" xyz="0 -2.0 0.0"/><!--ABB_1200_5_90 pedestal-->
   </joint>
 
 
   <!--curve_1 part-->
   <link name="curve_1_base_link">
-    <!-- <collision>
-      <origin rpy="0 0 0" xyz="-.124 0 .12"/>
+    <collision>
       <geometry>
-        <box size="1.016 .729 .24"/>
+        <mesh filename="model://curve_1/meshes/wood.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-    </collision> -->
+    </collision>
     <visual name="visual">
       <geometry>
-        <mesh filename="model://curve_1/meshes/wood.stl" scale="0.032 0.032 0.032"/>
+        <mesh filename="model://curve_1/meshes/wood.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="orange">
         <color rgba=".04 .42 1 1"/>
@@ -56,15 +67,14 @@
 
   <!--curve_2 part-->
   <link name="curve_2_base_link">
-    <!-- <collision>
-      <origin rpy="0 0 0" xyz="-.124 0 .12"/>
+    <collision>
       <geometry>
-        <box size="1.016 .729 .24"/>
+        <mesh filename="model://curve_2/meshes/generic_fan_blade.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-    </collision> -->
+    </collision>
     <visual name="visual">
       <geometry>
-        <mesh filename="model://curve_2/meshes/generic_fan_blade.stl" scale="0.032 0.032 0.032"/>
+        <mesh filename="model://curve_2/meshes/generic_fan_blade.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="orange">
         <color rgba=".04 .42 1 1"/>
@@ -77,7 +87,7 @@
     </inertial>
   </link>
 
-  <!--abb_6640_180_255 part-->
+  <!--ABB_6640_180_255 part-->
   <link name="ABB_6640_180_255_base_link">
     <collision>
       <origin rpy="0 0 0" xyz="-.124 0 .12"/>
@@ -87,7 +97,7 @@
     </collision>
     <visual name="visual">
       <geometry>
-        <mesh filename="model://abb_6640_180_255/meshes/visual/Base.stl"/>
+        <mesh filename="model://ABB_6640_180_255/meshes/visual/Base.stl"/>
       </geometry>
       <material name="orange">
         <color rgba="1 .42 .04 1"/>
@@ -145,14 +155,14 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="0 0 -.78"/>
       <geometry>
-        <mesh filename="model://abb_6640_180_255/meshes/visual/Link1.stl"/>
+        <mesh filename="model://ABB_6640_180_255/meshes/visual/Link1.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
     <visual name="visual2">
       <origin rpy="0 0 0" xyz="0 0 -.78"/>
       <geometry>
-        <mesh filename="model://abb_6640_180_255/meshes/visual/LinkD1.stl"/>
+        <mesh filename="model://ABB_6640_180_255/meshes/visual/LinkD1.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -178,7 +188,7 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="-.32 0 -.78"/>
       <geometry>
-        <mesh filename="model://abb_6640_180_255/meshes/visual/Link2.stl"/>
+        <mesh filename="model://ABB_6640_180_255/meshes/visual/Link2.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -234,7 +244,7 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="-.32 0 -1.855"/>
       <geometry>
-        <mesh filename="model://abb_6640_180_255/meshes/visual/Link3.stl"/>
+        <mesh filename="model://ABB_6640_180_255/meshes/visual/Link3.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -284,7 +294,7 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="-.32 0 -2.055"/>
       <geometry>
-        <mesh filename="model://abb_6640_180_255/meshes/visual/Link4.stl"/>
+        <mesh filename="model://ABB_6640_180_255/meshes/visual/Link4.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -304,7 +314,7 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="-1.462 0 -2.055"/>
       <geometry>
-        <mesh filename="model://abb_6640_180_255/meshes/visual/Link5.stl"/>
+        <mesh filename="model://ABB_6640_180_255/meshes/visual/Link5.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -324,7 +334,7 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="-1.662 0 -2.055"/>
       <geometry>
-        <mesh filename="model://abb_6640_180_255/meshes/visual/Link6.stl"/>
+        <mesh filename="model://ABB_6640_180_255/meshes/visual/Link6.stl"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -338,10 +348,16 @@
     <visual name="visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://paintgun/meshes/paint_gun.stl" scale="0.032 0.032 0.032"/>
+        <mesh filename="model://paintgun/meshes/paint_gun.stl" scale="0.001 0.001 0.001"/>
       </geometry>
       <material name="orange"/>
     </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://paintgun/meshes/paint_gun.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
 
   </link>
   <!-- end of link list -->
@@ -396,7 +412,7 @@
   <!-- end of joint list -->
 
 
-  <!--abb_1200_5_90 part-->
+  <!--ABB_1200_5_90 part-->
   <joint name="ABB_1200_5_90_joint_1" type="revolute">
     <parent link="ABB_1200_5_90_base_link"/>
     <child link="ABB_1200_5_90_link_1"/>
@@ -439,8 +455,8 @@
     <axis xyz="1 0 0"/>
     <limit effort="1000.0" lower="-6.283" upper="6.283" velocity="10.472"/>
   </joint>
-  <joint name="abb_1200_5_90_pedestal_JOINT_0" type="fixed">
-    <parent link="abb_1200_5_90_pedestal"/>
+  <joint name="ABB_1200_5_90_pedestal_JOINT_0" type="fixed">
+    <parent link="ABB_1200_5_90_pedestal"/>
     <child link="ABB_1200_5_90_base_link"/>
     <origin rpy="0 0 0" xyz="0 0 0"/>
     <axis xyz="0 0 0"/>
@@ -455,11 +471,11 @@
     <visual name="ABB_1200_5_90_base_link_fixed_joint_lump__visual_visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/visual/base_link.dae" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/visual/base_link.dae" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
-  <link name="abb_1200_5_90_pedestal">
+  <link name="ABB_1200_5_90_pedestal">
     <inertial>
       <mass value="1"/>
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -481,13 +497,13 @@
     <collision name="ABB_1200_5_90_link_1_fixed_joint_lump__collision_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/collision/link_1.stl" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/collision/link_1.stl" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual name="ABB_1200_5_90_link_1_fixed_joint_lump__visual_visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/visual/link_1.dae" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/visual/link_1.dae" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
@@ -500,13 +516,13 @@
     <collision name="ABB_1200_5_90_link_2_fixed_joint_lump__collision_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/collision/link_2.stl" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/collision/link_2.stl" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual name="ABB_1200_5_90_link_2_fixed_joint_lump__visual_visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/visual/link_2.dae" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/visual/link_2.dae" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
@@ -519,13 +535,13 @@
     <collision name="ABB_1200_5_90_link_3_fixed_joint_lump__collision_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/collision/link_3.stl" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/collision/link_3.stl" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual name="ABB_1200_5_90_link_3_fixed_joint_lump__visual_visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/visual/link_3.dae" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/visual/link_3.dae" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
@@ -538,13 +554,13 @@
     <collision name="ABB_1200_5_90_link_4_fixed_joint_lump__collision_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/collision/link_4.stl" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/collision/link_4.stl" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual name="ABB_1200_5_90_link_4_fixed_joint_lump__visual_visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/visual/link_4.dae" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/visual/link_4.dae" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
@@ -557,13 +573,13 @@
     <collision name="ABB_1200_5_90_link_5_fixed_joint_lump__collision_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/collision/link_5.stl" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/collision/link_5.stl" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual name="ABB_1200_5_90_link_5_fixed_joint_lump__visual_visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/visual/link_5.dae" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/visual/link_5.dae" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
@@ -576,16 +592,367 @@
     <collision name="ABB_1200_5_90_link_6_fixed_joint_lump__collision_collision">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/collision/link_6.stl" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/collision/link_6.stl" scale="1 1 1"/>
       </geometry>
     </collision>
     <visual name="ABB_1200_5_90_link_6_fixed_joint_lump__visual_visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="model://abb_1200_5_90/meshes/visual/link_6.dae" scale="1 1 1"/>
+        <mesh filename="model://ABB_1200_5_90/meshes/visual/link_6.dae" scale="1 1 1"/>
       </geometry>
     </visual>
   </link>
+
+  <!-- FANUC m10ia part -->
+  <link name="FANUC_m10ia_base_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/visual/base_link.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.4 0.4 0.4 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/collision/base_link.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_m10ia_link_1">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/visual/link_1.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/collision/link_1.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_m10ia_link_2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/visual/link_2.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/collision/link_2.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_m10ia_link_3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/visual/link_3.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/collision/link_3.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_m10ia_link_4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/visual/link_4.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 0.0"/> <!-- color not changing??? -->
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/collision/link_4.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_m10ia_link_5">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/visual/link_5.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/collision/link_5.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_m10ia_link_6">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/visual/link_6.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.15 0.15 0.15 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_m10ia/meshes/m10ia/collision/link_6.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_m10ia_tool">
+    <visual name="visual">
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://paintgun/meshes/paint_gun.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://paintgun/meshes/paint_gun.stl" scale="0.001 0.001 0.001"/>
+      </geometry>
+    </collision>
+
+  </link>
+  <!-- joints: main serial chain -->
+  <joint name="FANUC_m10ia_joint_1" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.450"/>
+    <parent link="FANUC_m10ia_base_link"/>
+    <child link="FANUC_m10ia_link_1"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="0" lower="-3.14" upper="3.14" velocity="3.67"/>
+  </joint>
+  <joint name="FANUC_m10ia_joint_2" type="revolute">
+    <origin rpy="0 0 0" xyz="0.150 0 0"/>
+    <parent link="FANUC_m10ia_link_1"/>
+    <child link="FANUC_m10ia_link_2"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="0" lower="-1.57" upper="2.79" velocity="3.32"/>
+  </joint>
+  <joint name="FANUC_m10ia_joint_3" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.600"/>
+    <parent link="FANUC_m10ia_link_2"/>
+    <child link="FANUC_m10ia_link_3"/>
+    <axis xyz="0 -1 0"/>
+    <limit effort="0" lower="-3.14" upper="4.61" velocity="3.67"/>
+  </joint>
+  <joint name="FANUC_m10ia_joint_4" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.200"/>
+    <parent link="FANUC_m10ia_link_3"/>
+    <child link="FANUC_m10ia_link_4"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="0" lower="-3.31" upper="3.31" velocity="6.98"/>
+  </joint>
+  <joint name="FANUC_m10ia_joint_5" type="revolute">
+    <origin rpy="0 0 0" xyz="0.640 0 0"/>
+    <parent link="FANUC_m10ia_link_4"/>
+    <child link="FANUC_m10ia_link_5"/>
+    <axis xyz="0 -1 0"/>
+    <limit effort="0" lower="-3.31" upper="3.31" velocity="6.98"/>
+  </joint>
+  <joint name="FANUC_m10ia_joint_6" type="revolute">
+    <origin rpy="0 0 0" xyz="0.100 0 0"/>
+    <parent link="FANUC_m10ia_link_5"/>
+    <child link="FANUC_m10ia_link_6"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="0" lower="-6.28" upper="6.28" velocity="10.47"/>
+  </joint>
+  <joint name="FANUC_m10ia_joint_6-tool0" type="fixed">
+    <parent link="FANUC_m10ia_link_6"/>
+    <child link="FANUC_m10ia_tool"/>
+    <origin rpy="0 1.57079632679 0" xyz="0 0 0"/>
+  </joint>
+
+  <!-- FANUC lrmate200id part -->
+  <link name="FANUC_lrmate200id_base_link">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/visual/base_link.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.2784313725490196 0.2784313725490196 0.2784313725490196 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/collision/base_link.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_lrmate200id_link_1">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/visual/link_1.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/collision/link_1.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_lrmate200id_link_2">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/visual/link_2.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/collision/link_2.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_lrmate200id_link_3">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/visual/link_3.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/collision/link_3.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_lrmate200id_link_4">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/visual/link_4.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/collision/link_4.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_lrmate200id_link_5">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/visual/link_5.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.96 0.76 0.13 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/collision/link_5.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <link name="FANUC_lrmate200id_link_6">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/visual/link_6.stl"/>
+      </geometry>
+      <material name="">
+        <color rgba="0.15 0.15 0.15 1.0"/>
+      </material>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="model://FANUC_lrmate200id/meshes/lrmate200id/collision/link_6.stl"/>
+      </geometry>
+    </collision>
+  </link>
+  <!-- joints: main serial chain -->
+  <joint name="FANUC_lrmate200id_joint_1" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.330"/>
+    <parent link="FANUC_lrmate200id_base_link"/>
+    <child link="FANUC_lrmate200id_link_1"/>
+    <axis xyz="0 0 1"/>
+    <limit effort="0" lower="-2.9670597283903604" upper="2.9670597283903604" velocity="7.853981633974483"/>
+  </joint>
+  <joint name="FANUC_lrmate200id_joint_2" type="revolute">
+    <origin rpy="0 0 0" xyz="0.050 0 0"/>
+    <parent link="FANUC_lrmate200id_link_1"/>
+    <child link="FANUC_lrmate200id_link_2"/>
+    <axis xyz="0 1 0"/>
+    <limit effort="0" lower="-1.7453292519943295" upper="2.530727415391778" velocity="6.632251157578453"/>
+  </joint>
+  <joint name="FANUC_lrmate200id_joint_3" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.330"/>
+    <parent link="FANUC_lrmate200id_link_2"/>
+    <child link="FANUC_lrmate200id_link_3"/>
+    <axis xyz="0 -1 0"/>
+    <limit effort="0" lower="-1.2217304763960306" upper="3.5779249665883754" velocity="9.075712110370514"/>
+  </joint>
+  <joint name="FANUC_lrmate200id_joint_4" type="revolute">
+    <origin rpy="0 0 0" xyz="0 0 0.035"/>
+    <parent link="FANUC_lrmate200id_link_3"/>
+    <child link="FANUC_lrmate200id_link_4"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="0" lower="-3.3161255787892263" upper="3.3161255787892263" velocity="9.599310885968812"/>
+  </joint>
+  <joint name="FANUC_lrmate200id_joint_5" type="revolute">
+    <origin rpy="0 0 0" xyz="0.335 0 0"/>
+    <parent link="FANUC_lrmate200id_link_4"/>
+    <child link="FANUC_lrmate200id_link_5"/>
+    <axis xyz="0 -1 0"/>
+    <limit effort="0" lower="-2.181661564992912" upper="2.181661564992912" velocity="9.512044423369096"/>
+  </joint>
+  <joint name="FANUC_lrmate200id_joint_6" type="revolute">
+    <origin rpy="0 0 0" xyz="0.080 0 0"/>
+    <parent link="FANUC_lrmate200id_link_5"/>
+    <child link="FANUC_lrmate200id_link_6"/>
+    <axis xyz="-1 0 0"/>
+    <limit effort="0" lower="-6.283185307179586" upper="6.283185307179586" velocity="17.453292519943297"/>
+  </joint>
 
 
 </robot>

@@ -24,13 +24,14 @@ class Transform_all(object):
 
 class robot_obj(object):
 	###robot object class
-	def __init__(self,def_path,tool_file_path='',base_transformation_file='',d=0,acc_dict_path=''):
+	def __init__(self,robot_name,def_path,tool_file_path='',base_transformation_file='',d=0,acc_dict_path=''):
 		#def_path: robot 			definition yaml file, name must include robot vendor
 		#tool_file_path: 			tool transformation to robot flange csv file
 		#base_transformation_file: 	base transformation to world frame csv file
 		#d: 						tool z extension
 		#acc_dict_path: 			accleration profile
 
+		self.robot_name=robot_name
 		with open(def_path, 'r') as f:
 			self.robot = rr_rox.load_robot_info_yaml_to_robot(f)
 
@@ -188,6 +189,7 @@ class robot_obj(object):
 
 			theta_dist = np.linalg.norm(np.subtract(theta_v,last_joints), axis=1)
 			return [theta_v[i] for i in list(np.argsort(theta_dist))]
+
 
 def main():
 	robot=robot_obj('../config/abb_6640_180_255_robot_default_config.yml',tool_file_path='../config/paintgun.csv',d=50,acc_dict_path='')

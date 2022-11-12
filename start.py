@@ -14,9 +14,9 @@ from toolbox.robot_def import *
 from redundancy_resolution.redundancy_resolution import *
 from cmd_gen.cmd_gen import *
 from toolbox.abb_utils import *
-# from toolbox.fanuc_utils import *
+from toolbox.fanuc_utils import *
 from motion_update.motion_update import *
-from tes_env import *
+from toolbox.tes_env import *
 
 def msgbtn(i):
     print ("Button pressed is:",i.text())
@@ -102,10 +102,10 @@ class SprayGUI(QDialog):
         self.originalPalette = QApplication.palette()
 
         ###tesseract visualizer
-        self.visualizer=Tess_Visual('config/urdf/')
+        self.tes_env=Tess_Env('config/urdf/')
 
         # robot box
-        robot_list=['','m710ic','m900ia','m10ia','ABB_1200_5_90','ABB_6640_180_255']
+        robot_list=['','FANUC_m710ic','FANUC_m900ia','FANUC_m10ia','ABB_1200_5_90','ABB_6640_180_255']
         self.robotComBox1=QComboBox()
         self.robotComBox1.addItems(robot_list)
         self.robotComBox1.currentTextChanged.connect(self.robot1_change)
@@ -116,6 +116,22 @@ class SprayGUI(QDialog):
         self.robotComBox2.currentTextChanged.connect(self.robot2_change)
         robotlabel2=QLabel("Robot2:")
         robotlabel2.setBuddy(self.robotComBox2)
+
+        ###reset visualization button
+        vis_reset_button=QPushButton('Reset Visualization')
+        vis_reset_button.setDefault(False)
+        vis_reset_button.clicked.connect(self.reset_visualization)
+
+        ###ROBOT CONTROLLER IP
+        IPlabel=QLabel("ROBOT IP:")
+        self.robot_ip_box=QLineEdit('127.0.0.1')
+        self.robot_ip_box.setFixedWidth(100)
+
+        IPlabel.setBuddy(self.robot_ip_box)
+        ip_set_button=QPushButton('Set IP')
+        ip_set_button.setDefault(False)
+        ip_set_button.clicked.connect(self.read_ip)
+
 
         ## Redundancy Resolution Box
         self.redundancyResLeft()
@@ -131,6 +147,11 @@ class SprayGUI(QDialog):
         toplayout.addStretch(1)
         toplayout.addWidget(robotlabel2)
         toplayout.addWidget(self.robotComBox2)
+        toplayout.addWidget(vis_reset_button)
+        toplayout.addWidget(IPlabel)
+        toplayout.addWidget(self.robot_ip_box)
+        toplayout.addWidget(ip_set_button)
+
 
         ## main layout
         mainLayout = QGridLayout()
@@ -169,13 +190,14 @@ class SprayGUI(QDialog):
         if robot1_choose == '':
             return
         else:
-            self.robot1=robot_obj('config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc.pickle')
+            self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc.pickle')
             if 'ABB' in robot1_choose:
-                self.robot1MotionSend=MotionSendABB    ###TODO: add realrobot argument (IP, repeatibility)
+                self.robot1MotionSend=MotionSendABB             ###TODO: add realrobot argument (IP, repeatibility)
             elif 'FANUC' in robot1_choose:
                 self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)           
         self.robot1_name=robot1_choose
-        
+        self.tes_env.update_pose(self.robot1_name,np.eye(4))
+
     def robot2_change(self,robot2_choose):
         print("Robot2 not supported now.")
     
@@ -212,7 +234,7 @@ class SprayGUI(QDialog):
         self.v_cmd_box.setMaximum(2000)
         self.v_cmd_box.setValue(500)
         self.v_cmd_box.setSingleStep(50)
-        v_cmd_qt=QLabel('Threshold:')
+        v_cmd_qt=QLabel('Aggressive Velocity')
         v_cmd_qt.setBuddy(self.v_cmd_box)
 
         self.redres_diffevo_runButton=QPushButton("Run DiffEvo (>1day, needs to run baseline first)")
@@ -226,11 +248,25 @@ class SprayGUI(QDialog):
         layout.addWidget(filebutton)
         layout.addWidget(self.curve_filenametext)
         layout.addWidget(self.redres_baseline_runButton)
+        layout.addWidget(v_cmd_qt)
         layout.addWidget(self.v_cmd_box)
         layout.addWidget(self.redres_diffevo_runButton)
         layout.addWidget(self.run1_result)
         layout.addStretch(1)
         self.redResLeftBox.setLayout(layout)
+
+    def reset_visualization(self):
+        H=np.eye(4)
+        H[:-1,-1]=100*np.ones(3)
+        self.tes_env.update_pose('ABB_6640_180_255',H)
+        self.tes_env.update_pose('FANUC_lrmate200id',H)
+        self.tes_env.update_pose('ABB_1200_5_90',H)
+        self.tes_env.update_pose('FANUC_m10ia',H)
+        self.tes_env.update_pose('curve_1',H)
+        self.tes_env.update_pose('curve_2',H)
+
+    def read_ip(self):
+        self.robot_ip= self.robot_ip_box.text()
 
     def readCurveFile(self):
         
@@ -324,6 +360,8 @@ class SprayGUI(QDialog):
 
         curve_base,curve_normal_base,curve_js,H,run_duration=result
 
+        robot_path=self.curve_pathname+'/'+self.robot1_name+'/'
+        Path(robot_path).mkdir(exist_ok=True)
         save_filepath=self.curve_pathname+'/'+self.robot1_name+'/baseline/'
         Path(save_filepath).mkdir(exist_ok=True)
 
@@ -543,22 +581,40 @@ class SprayGUI(QDialog):
 
         self.run2_result.setText('Motion Program Generated\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
 
+    def read_Solution(self):
+        solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+        self.des_curve_filename = solution_dir+'/Curve_in_base_frame.csv'
+        self.des_curvejs_filename = solution_dir+'/Curve_js.csv'
+        self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
+        curve_stringidx1=solution_dir.index('data/')
+        part_name=solution_dir[curve_stringidx1+5:]
+        curve_stringidx2=part_name.index('/')
+        part_name=part_name[:curve_stringidx2]
+        ###TODO: warning if not a valid solution directory
+        part_pose_m=copy.deepcopy(self.part_pose)
+        part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
 
+        self.tes_env.update_pose(part_name,part_pose_m)
         
     def motionProgUpdateRight(self):
         
         self.moProgUpRightBox=QGroupBox('Motion Program Update')
 
         # add button
-        descurvebutton=QPushButton('Open Desired Curve File')
-        descurvebutton.setDefault(True)
-        descurvebutton.clicked.connect(self.readDesiredCurveFile)
-        self.des_curve_filenametext=QLabel('(Please add desired curve file)')
+        solution_button=QPushButton('Open Solution Directory')
+        solution_button.setDefault(True)
+        solution_button.clicked.connect(self.read_Solution)
+        self.solutionDirtext=QLabel('(Please select solution directory)')
 
-        descurvejsbutton=QPushButton('Open Desired Curve js File')
-        descurvejsbutton.setDefault(True)
-        descurvejsbutton.clicked.connect(self.readDesiredCurveJsFile)
-        self.des_curvejs_filenametext=QLabel('(Please add desired curve js file)')
+        # descurvebutton=QPushButton('Open Desired Curve File')
+        # descurvebutton.setDefault(True)
+        # descurvebutton.clicked.connect(self.readDesiredCurveFile)
+        # self.des_curve_filenametext=QLabel('(Please add desired curve file)')
+
+        # descurvejsbutton=QPushButton('Open Desired Curve js File')
+        # descurvejsbutton.setDefault(True)
+        # descurvejsbutton.clicked.connect(self.readDesiredCurveJsFile)
+        # self.des_curvejs_filenametext=QLabel('(Please add desired curve js file)')
 
         filebutton=QPushButton('Open Command File')
         filebutton.setDefault(True)
@@ -627,10 +683,13 @@ class SprayGUI(QDialog):
 
         # add layout
         layout = QVBoxLayout()
-        layout.addWidget(descurvebutton)
-        layout.addWidget(self.des_curve_filenametext)
-        layout.addWidget(descurvejsbutton)
-        layout.addWidget(self.des_curvejs_filenametext)
+        layout.addWidget(solution_button)
+        layout.addWidget(self.solutionDirtext)
+
+        # layout.addWidget(descurvebutton)
+        # layout.addWidget(self.des_curve_filenametext)
+        # layout.addWidget(descurvejsbutton)
+        # layout.addWidget(self.des_curvejs_filenametext)
         layout.addWidget(filebutton)
         layout.addWidget(self.cmd_filenametext)
         layout.addLayout(vellayout)
@@ -695,7 +754,7 @@ class SprayGUI(QDialog):
 
         curve_js=np.loadtxt(self.des_curvejs_filename,delimiter=',')
         try:    ###TODO: add error box popup
-            self.visual_worker=Worker(self.visualizer.viewer_trajectory,self.robot1_name,curve_js[::100])
+            self.visual_worker=Worker(self.tes_env.viewer_trajectory,self.robot1_name,curve_js[::100])
             self.visual_worker,self.visual_thread,self.visual_timer,self.visual_timer_thread=\
                 setup_worker_timer(self.visual_worker,self.visual_thread,self.visual_timer,self.visual_timer_thread,self.prog_Visualization,self.res_Visualization)
         except:
