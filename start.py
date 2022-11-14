@@ -368,7 +368,7 @@ class SprayGUI(QDialog):
 
         if len(result) <= 1:
             run_duration=result[0]
-            self.run1_result.setText('Redundancy Resolution failed because of errors. Time:',time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            self.run1_result.setText('Redundancy Resolution failed because of errors. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             return
 
         curve_base,curve_normal_base,curve_js,H,run_duration=result
