@@ -1,6 +1,6 @@
 from pandas import read_csv, DataFrame
 import sys, copy
-sys.path.append('data/')
+sys.path.append('train_data/')
 sys.path.append('toolbox/')
 from toolbox_circular_fit import *
 from abb_motion_program_exec_client import *
@@ -19,7 +19,7 @@ def form_traj_from_bp(q_bp,primitives,robot):
 	curve_R=[init_pose.R]
 	breakpoints=[0]
 	for i in range(1,len(primitives)):
-		if primitives[i]=='movej_fit':
+		if primitives[i]=='movej_fit' or primitives[i]=='moveabsj':
 			#interpolate joint space linearly
 			q_movej=np.linspace(curve_js[-1],q_bp[i][0],num=N+1)[1:]
 			curve_js.extend(q_movej)
@@ -94,6 +94,16 @@ def blend_js_from_primitive(curve, curve_js, breakpoints, primitives,robot,zone=
 			blending_end_idx.append(np.argmin(np.abs(lam-lam[breakpoints[i]]-zone)))
 
 	blending_end_idx.pop(0)	#remove first one
+
+
+	###guard to have no same index
+	for i in range(len(blending_start_idx)):
+		if blending_start_idx[i]==blending_end_idx[i]:
+			if i==0:	#guard i==0
+				blending_start_idx[i]=3
+			else:
+				blending_start_idx[i]=blending_end_idx[i-1]+1	
+			blending_end_idx[i]=int((breakpoints[i+1]+breakpoints[i+2])/2)-1
 
 	curve_js_blended=blend_js2(curve_js,breakpoints,lam,blending_start_idx,blending_end_idx)
 	curve_blended=[]
@@ -211,13 +221,13 @@ def blend_exe():
 	###maxium blending in RobotStudio, higher than that will result in similar behavior of z100
 	z_max=min(zone,150)
 
-	data = read_csv('data/'+data_set+'command.csv')
+	data = read_csv('train_data/'+data_set+'command.csv')
 	breakpoints=np.array(data['breakpoints'].tolist())
 	act_breakpoints=copy.deepcopy(breakpoints)
 	act_breakpoints[1:]=act_breakpoints[1:]-1
 
-	curve_js = read_csv('data/'+data_set+'Curve_js.csv',header=None).values
-	curve = read_csv('data/'+data_set+'Curve_in_base_frame.csv',header=None).values
+	curve_js = read_csv('train_data/'+data_set+'Curve_js.csv',header=None).values
+	curve = read_csv('train_data/'+data_set+'Curve_in_base_frame.csv',header=None).values
 
 
 
@@ -301,13 +311,13 @@ def main():
 	robot=abb6640(d=50)
 	data_set='movel_30_ori/'
 
-	data = read_csv('data/'+data_set+'command.csv')
+	data = read_csv('train_data/'+data_set+'command.csv')
 	breakpoints=np.array(data['breakpoints'].tolist())
 	act_breakpoints=copy.deepcopy(breakpoints)
 	act_breakpoints[1:]=act_breakpoints[1:]-1
 
-	curve_js = read_csv('data/'+data_set+'Curve_js.csv',header=None).values
-	curve = read_csv('data/'+data_set+'Curve_in_base_frame.csv',header=None).values
+	curve_js = read_csv('train_data/'+data_set+'Curve_js.csv',header=None).values
+	curve = read_csv('train_data/'+data_set+'Curve_in_base_frame.csv',header=None).values
 
 	data=read_csv('execution/'+data_set+'curve_exe_v500_z10.csv')
 	q1=data[' J1'].tolist()
@@ -401,14 +411,14 @@ def main2():
 	robot=abb6640(d=50)
 	data_set='movel_30_car/'
 
-	data = read_csv('data/'+data_set+'command.csv')
+	data = read_csv('train_data/'+data_set+'command.csv')
 	breakpoints=np.array(data['breakpoints'].tolist())
 	primitives=data['primitives'].tolist()[1:]
 	act_breakpoints=copy.deepcopy(breakpoints)
 	act_breakpoints[1:]=act_breakpoints[1:]-1
 
-	curve_js = read_csv('data/'+data_set+'Curve_js.csv',header=None).values
-	curve = read_csv('data/'+data_set+'Curve_in_base_frame.csv',header=None).values
+	curve_js = read_csv('train_data/'+data_set+'Curve_js.csv',header=None).values
+	curve = read_csv('train_data/'+data_set+'Curve_in_base_frame.csv',header=None).values
 
 
 

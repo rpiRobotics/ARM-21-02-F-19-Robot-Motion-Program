@@ -188,4 +188,53 @@ def logged_data_analysis(robot,timestamp,curve_exe_js):
 		except IndexError:
 			pass
 
+	act_speed=moving_average(act_speed,padding=True)
+
 	return lam, np.array(curve_exe), np.array(curve_exe_R), act_speed
+
+
+def logged_data_analysis_multimove(robot1,robot2,timestamp,curve_exe_js_dual):
+	curve_exe_js1=curve_exe_js_dual[:,:6]
+	curve_exe_js2=curve_exe_js_dual[:,6:]
+
+
+	act_speed=[]
+	lam=[0]
+	relative_path_exe=[]
+	relative_path_exe_R=[]
+	curve_exe1=[]
+	curve_exe2=[]
+	curve_exe_R1=[]
+	curve_exe_R2=[]
+	for i in range(len(curve_exe_js1)):
+		pose1_now=robot1.fwd(curve_exe_js1[i])
+		pose2_now=robot2.fwd(curve_exe_js2[i])
+
+		curve_exe1.append(pose1_now.p)
+		curve_exe2.append(pose2_now.p)
+		curve_exe_R1.append(pose1_now.R)
+		curve_exe_R2.append(pose2_now.R)
+
+		pose2_world_now=robot2.fwd(curve_exe_js2[i],world=True)
+
+		relative_path_exe.append(np.dot(pose2_world_now.R.T,pose1_now.p-pose2_world_now.p))
+		relative_path_exe_R.append(pose2_world_now.R.T@pose1_now.R)
+		if i>0:
+			lam.append(lam[-1]+np.linalg.norm(relative_path_exe[i]-relative_path_exe[i-1]))
+		try:
+			if np.linalg.norm(relative_path_exe[-1]-relative_path_exe[-2])==0:
+				act_speed.append(0)
+			else:
+				if timestamp[i-1]!=timestamp[i]:
+					act_speed.append(np.linalg.norm(relative_path_exe[-1]-relative_path_exe[-2])/(timestamp[i]-timestamp[i-1]))
+				else:
+					act_speed.append(act_speed[-1])
+				
+		except IndexError:
+			pass
+
+	###speed filter
+	act_speed=moving_average(act_speed,padding=True)
+	
+
+	return np.array(lam), np.array(curve_exe1),np.array(curve_exe2), np.array(curve_exe_R1),np.array(curve_exe_R2),curve_exe_js1,curve_exe_js2, act_speed, timestamp, np.array(relative_path_exe), np.array(relative_path_exe_R)

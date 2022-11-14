@@ -286,10 +286,10 @@ def circle_fit_w_2slope(curve,p,p2,slope1,slope2):
 
 
 def circle_fit(curve,p=[],p2=[]):
-    ###curve: 3D point data
+    ###curve: 3D point train_data
     ###p:   constraint point of the arc
     ########################################
-    ###return curve_fit: 3D point data
+    ###return curve_fit: 3D point train_data
 
     if len(p)==0:   #no constraint
         ###fit on a plane first

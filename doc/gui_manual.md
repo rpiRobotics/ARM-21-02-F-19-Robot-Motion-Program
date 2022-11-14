@@ -4,7 +4,7 @@ The whole process process including three steps, Solving Redundancy Resolution, 
 
 ![](figures/gui.png)
 
-See [here](https://youtu.be/qCv11wtNU88) for video instruction.
+<!-- See [here](https://youtu.be/qCv11wtNU88) for video instruction. -->
 
 ## Pre-request
 
@@ -22,11 +22,11 @@ A csv file defined the desired curve path (position and normal direction) is req
 
 ## Run Gui
 
-Execute `run_fanuc.py` in the directory where you saved the repo.
+Execute `start.py` in the directory where you saved the repo.
 
 ```
 cd (repo directory)
-python run_fanuc.py
+python start.py
 ```
 
 ## Solving Redundancy Resolution
@@ -37,14 +37,24 @@ The step finds the optimal curve pose (relative to the robot base frame), the cu
 
 0. Choose Robot1
 1. Click `Open Curve File` and choose the prepared curve file described in pre-request.
-2. Click `Run`.
-3. The result will be saved in a folder named `(robot1)_fanuc` in the same directory of the curve file. 
+2. Click `Run Baseline`.
+3. The result will be saved in a folder named `(robot name)` in the same directory of the curve file. 
 
 ![](figures/redres_folder.png)
 
-4. The result includes the curve pose (`blade_pose.yaml`), the curve represented in base frame (`Curve_in_base_frame.csv`) and the curve in joint space (`Curve_js.csv`)
+4. In the result folder, the result will be saved in the folder with the method name (`baseline` in this case). The result includeing the curve pose (`blade_pose.yaml`), the curve represented in base frame (`Curve_in_base_frame.csv`) and the curve in joint space (`Curve_js.csv`) will be saved in this `baseline` folder
 
 ![](figures/redres_result.png)
+![](figures/redres_result_2.png)
+
+### Differential Evolution
+
+0. Choose Robot1
+1. Click `Open Curve File` and choose the prepared curve file described in pre-request.
+2. Click `Run DiffEvo`.
+3. In the result folder, the result will be saved in the folder with the method name. The result includeing the curve pose (`blade_pose.yaml`), the curve represented in base frame (`Curve_in_base_frame.csv`) and the curve in joint space (`Curve_js.csv`) will be saved in this `baseline` folder 
+
+Note that differential evolution might take up to 1 days depends on the computaion resource.
 
 ## Motion Program Generation
 
@@ -57,22 +67,32 @@ The baseline method simply divided the trajectory into equal distance `Move L` (
 0. Choose Robot1
 1. Click `Open Curve Js File` and open the previous generated `Curve_js.csv`.
 2. Enter how many moveL you want.
-3. Click `Run`
-4. The result will be saved in a directory of `Curve_js.csv` named `command.csv`.
+3. Click `Run Baseline`
+4. The result will be saved in a folder with the name of method (in this case `25L`) and named `command.csv`.
 
 ![](figures/moproggen_baseline_result.png)
+![](figures/moproggen_baseline_result_2.png)
+
+### Greedy
+
+The baseline method simply divided the trajectory into equal distance `Move L` (linear move in  cartesian space).
+
+0. Choose Robot1
+1. Click `Open Curve Js File` and open the previous generated `Curve_js.csv`.
+2. Enter the greedy fit tolerance.
+3. Click `Run Baseline`
+4. The result will be saved in a folder with the name of method (in this case `greedy0.1`) and named `command.csv`.
 
 ## Motion Program Update
 
 ### Multi Max Gradient Descent
 
 0. Choose Robot1
-1. Click `Open Desired Curve File` and open the previous generated `Curve_in_base_frame.csv`.
-2. Click `Open Desired Curve js File` and open the previous generated `Curve_js.csv`.
-3. Click `Open Command File` and open the previous generated `command.csv`.
-4. Enter the desired velocity, euclidean error/angular error/speed variantion tolerance.
-5. **!!! Important !!!** For FANUC: Make sure the robot in the roboguide is running (The play key is clicked and turnes green, running the main program. See [here](https://github.com/eric565648/fanuc_motion_program_exec) for further information.)
-6. Click `Run`
+1. Click `Open Solution Directory` and open the previous generated folder in redundancy resolution step (e.g. the `baseline` folder in step 1).
+2. Click `Open Command File` and open the previous generated `command.csv`. (e.g. `baseline/25L/command.csv`)
+3. Enter the desired velocity, euclidean error/angular error/speed variantion tolerance, and extension length.
+4. **!!! Important !!!** For FANUC: Make sure the robot in the roboguide is running (The play key is clicked and turnes green, running the main program. See [here](https://github.com/eric565648/fanuc_motion_program_exec) for further information.)
+5. Click `Run Motion Update`
 7. While running the program, the result of each iteration will be show in the panel. The result will be saved in a folder `result_speed_(vel)` in the same directory of the motion command profile `command.csv`.
 
 ![](figures/max_grad_folder.png)

@@ -4,24 +4,24 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
 from scipy import signal
 import scipy
-from sklearn.cluster import KMeans
+from robots_def import *
 
-def remove_traj_outlier(curve_exe_all,curve_exe_js_all,timestamp_all,total_time_all):
+def get_speed(curve_exe,timestamp):
+	d_curve_exe=np.gradient(curve_exe,axis=0)
+	speed=np.linalg.norm(d_curve_exe,axis=1)/np.gradient(timestamp)
+	speed=moving_average(speed,padding=True)
+	# speed=replace_outliers(speed)
+	# speed=replace_outliers2(speed)
+	return speed
 
-	km = KMeans(n_clusters=2)
-	index=km.fit_predict(np.array(total_time_all).reshape(-1,1))
-	cluster=km.cluster_centers_
-	major_index=scipy.stats.mode(index)[0][0]       ###mostly appeared index
-	major_indices=np.where(index==major_index)[0]
-	time_mode_avg=cluster[major_index]
+def clip_joints(robot,curve_js,relax=0.05):
+	curve_js_clipped=np.zeros(curve_js.shape)
+	for i in range(len(curve_js[0])):
+		curve_js_clipped[:,i]=np.clip(curve_js[:,i],robot.lower_limit[i]+relax,robot.upper_limit[i]-relax)
 
-	if abs(cluster[0][0]-cluster[1][0])>0.02*time_mode_avg:
-		curve_exe_all=[curve_exe_all[iii] for iii in major_indices]
-		curve_exe_js_all=[curve_exe_js_all[iii] for iii in major_indices]
-		timestamp_all=[timestamp_all[iii] for iii in major_indices]
-		print('outlier traj detected')
+	return curve_js_clipped
 
-	return curve_exe_all,curve_exe_js_all,timestamp_all
+
 
 def interplate_timestamp(curve,timestamp,timestamp_d):
 
@@ -32,46 +32,33 @@ def interplate_timestamp(curve,timestamp,timestamp_d):
 
 	return np.array(curve_new).T
 
-def average_curve(curve_all,timestamp_all):
-	###get desired synced timestamp first
-	max_length=[]
-	max_time=[]
-	for i in range(len(timestamp_all)):
-		max_length.append(len(timestamp_all[i]))
-		max_time.append(timestamp_all[i][-1])
-	max_length=np.max(max_length)
-	max_time=np.max(max_time)
-	timestamp_d=np.linspace(0,max_time,num=max_length)
-
-	###linear interpolate each curve with synced timestamp
-	curve_all_new=[]
-	for i in range(len(timestamp_all)):
-		curve_all_new.append(interplate_timestamp(curve_all[i],timestamp_all[i],timestamp_d))
-
-	curve_all_new=np.array(curve_all_new)
-
-	return curve_all_new, np.average(curve_all_new,axis=0),timestamp_d
 	
-def replace_outliers2(data):
+def replace_outliers2(data,threshold=0.0001):
+	###replace outlier with rolling average
 	rolling_window=30
-	for i in range(len(data)-rolling_window):
-		rolling_avg=np.mean(data[i:i+rolling_window])
-		if np.abs(data[i]-rolling_avg)>0.0001*rolling_avg:
+	rolling_window_half=int(rolling_window/2)
+	for i in range(rolling_window_half,len(data)-rolling_window_half):
+		rolling_avg=np.mean(data[i-rolling_window_half:i+rolling_window_half])
+		if np.abs(data[i]-rolling_avg)>threshold*rolling_avg:
+			rolling_avg=(rolling_avg*rolling_window-data[i])/(rolling_window-1)
 			data[i]=rolling_avg
 	return data
 def replace_outliers(data, m=2):
+	###replace outlier with average
 	data[abs(data - np.mean(data)) > m * np.std(data)] = np.mean(data)
 	return data
 
-def quadrant(q):
-	temp=np.ceil(np.array([q[0],q[3],q[5]])/(np.pi/2))-1
+def quadrant(q,robot):
+	cf146=np.floor(np.array([q[0],q[3],q[5]])/(np.pi/2))
+	eef=fwdkin(robot.robot_def_nT,q).p
 	
-	if q[4] < 0:
-		last = 1
-	else:
-		last = 0
+	REAR=(1-np.sign((Rz(q[0])@np.array([1,0,0]))@np.array([eef[0],eef[1],eef[2]])))/2
 
-	return np.hstack((temp,[last])).astype(int)
+	LOWERARM= q[2]<-np.pi/2
+	FLIP= q[4]<0
+
+
+	return np.hstack((cf146,[4*REAR+2*LOWERARM+FLIP])).astype(int)
 	
 def cross(v):
 	return np.array([[0,-v[-1],v[1]],
@@ -103,6 +90,24 @@ def VectorPlaneProjection(v,n):
 	v_out=v-temp
 	v_out=v_out/np.linalg.norm(v_out)
 	return v_out
+
+def find_j_det(robot,curve_js):
+	j_det=[]
+	for q in curve_js:
+		j=robot.jacobian(q)
+		# j=j/np.linalg.norm(j)
+		j_det.append(np.linalg.det(j))
+
+	return j_det
+
+def find_condition_num(robot,curve_js):
+	cond=[]
+	for q in curve_js:
+		u, s, vh = np.linalg.svd(robot.jacobian(q))
+		cond.append(s[0]/s[-1])
+
+	return cond
+
 
 def find_j_min(robot,curve_js):
 	sing_min=[]
@@ -171,11 +176,19 @@ def visualize_curve(curve,stepsize=10):
 	plt.show()
 
 def linear_interp(x,y):
+	###avoid divided by 0 problem
+	x,unique_indices=np.unique(x,return_index=True)
+	if (len(unique_indices)<len(y)-2):
+		print('Duplicate in interpolate, check timestamp')
+	y=y[unique_indices]
 	f=interp1d(x,y.T)
 	x_new=np.linspace(x[0],x[-1],len(x))
 	return x_new, f(x_new).T
 
-def moving_average(a, n=10) :
+def moving_average(a, n=11, padding=False):
+	#n needs to be odd for padding
+	if padding:
+		a=np.hstack(([np.mean(a[:int(n/2)])]*int(n/2),a,[np.mean(a[-int(n/2):])]*int(n/2)))
 	ret = np.cumsum(a, axis=0)
 	ret[n:] = ret[n:] - ret[:-n]
 	return ret[n - 1:] / n
@@ -186,6 +199,7 @@ def lfilter(x, y):
 	n=10
 	y1=moving_average(y,n)
 	y2=moving_average(np.flip(y,axis=0),n)
+
 	return x[int(n/2):-int(n/2)+1], (y1+np.flip(y2,axis=0))/2
 
 def orientation_interp(R_init,R_end,steps):
@@ -208,28 +222,31 @@ def H_from_RT(R,T):
 def car2js(robot,q_init,curve_fit,curve_fit_R):
 	###calculate corresponding joint configs
 	curve_fit_js=[]
-	if curve_fit.shape==(3,):
-		q_all=np.array(robot.inv(curve_fit,curve_fit_R))
+	if curve_fit.shape==(3,):### if a single point
 
-		if len(q_all)!=0:
-			###choose inv_kin closest to previous joints
-			if len(curve_fit_js)>1:
-				temp_q=q_all-curve_fit_js[-1]
-			else:
-				temp_q=q_all-q_init
-			order=np.argsort(np.linalg.norm(temp_q,axis=1))
-			curve_fit_js.append(q_all[order[0]])
+		inv_sol = robot.inv(curve_fit,curve_fit_R,last_joints=q_init)
+		if len(inv_sol)>0:
+			temp_q=inv_sol[0]
+			curve_fit_js.append(temp_q)
+
 	else:
 		for i in range(len(curve_fit)):
-			q_all=np.array(robot.inv(curve_fit[i],curve_fit_R[i]))
-
 			###choose inv_kin closest to previous joints
 			if len(curve_fit_js)>1:
-				temp_q=q_all-curve_fit_js[-1]
+				inv_sol = robot.inv(curve_fit[i],curve_fit_R[i],last_joints=curve_fit_js[-1])
+				if len(inv_sol)>0:
+					temp_q=inv_sol[0]
+				else:
+					continue
 			else:
-				temp_q=q_all-q_init
-			order=np.argsort(np.linalg.norm(temp_q,axis=1))
-			curve_fit_js.append(q_all[order[0]])
+				inv_sol = robot.inv(curve_fit[i],curve_fit_R[i],last_joints=q_init)
+				if len(inv_sol)>0:
+					temp_q=inv_sol[0]
+				else:
+					continue
+			
+			curve_fit_js.append(temp_q)
+
 	return curve_fit_js
 
 def R2w(curve_R,R_constraint=[]):
@@ -259,6 +276,66 @@ def w2R(curve_w,R_init):
 			curve_R.append(np.dot(rot(curve_w[i]/theta,theta),R_init))
 
 	return np.array(curve_R)
+
+def rotation_matrix_from_vectors(vec1, vec2):	#https://stackoverflow.com/questions/45142959/calculate-rotation-matrix-to-align-two-vectors-in-3d-space
+	""" Find the rotation matrix that aligns vec1 to vec2
+	:param vec1: A 3d "source" vector
+	:param vec2: A 3d "destination" vector
+	:return mat: A transform matrix (3x3) which when applied to vec1, aligns it with vec2.
+	"""
+	a, b = (vec1 / np.linalg.norm(vec1)).reshape(3), (vec2 / np.linalg.norm(vec2)).reshape(3)
+	v = np.cross(a, b)
+	c = np.dot(a, b)
+	s = np.linalg.norm(v)
+	kmat = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+	rotation_matrix = np.eye(3) + kmat + kmat.dot(kmat) * ((1 - c) / (s ** 2))
+	return rotation_matrix
+
+
+def rotationMatrixToEulerAngles(R) :
+	###https://learnopencv.com/rotation-matrix-to-euler-angles/
+	sy = math.sqrt(R[0,0] * R[0,0] +  R[1,0] * R[1,0])
+
+	singular = sy < 1e-6
+
+	if  not singular :
+		x = math.atan2(R[2,1] , R[2,2])
+		y = math.atan2(-R[2,0], sy)
+		z = math.atan2(R[1,0], R[0,0])
+	else :
+		x = math.atan2(-R[1,2], R[1,1])
+		y = math.atan2(-R[2,0], sy)
+		z = 0
+	return [x, y, z]
+
+
+def plot_speed_error(lam,speed,error,angle_error,cmd_v,peaks=[],path='',error_window=2):
+	fig, ax1 = plt.subplots()
+	ax2 = ax1.twinx()
+	ax1.plot(lam, speed, 'g-', label='Speed')
+	if len(error)>0:
+		ax2.plot(lam, error, 'b-',label='Error')
+	if len(peaks)>0:
+		ax2.scatter(lam[peaks],error[peaks],label='peaks')
+	if len(angle_error)>0:
+		ax2.plot(lam, np.degrees(angle_error), 'y-',label='Normal Error')
+	ax2.axis(ymin=0,ymax=error_window)
+	ax1.axis(ymin=0,ymax=1.2*cmd_v)
+
+	ax1.set_xlabel('lambda (mm)')
+	ax1.set_ylabel('Speed/lamdot (mm/s)', color='g')
+	ax2.set_ylabel('Error/Normal Error (mm/deg)', color='b')
+	plt.title("Speed and Error Plot")
+	ax1.legend(loc="upper right")
+
+	ax2.legend(loc="upper left")
+
+	plt.legend()
+	if len(peaks)>0:
+		plt.savefig(path)
+		plt.clf()
+	else:
+		plt.show()
 
 def unwrapped_angle_check(q_init,q_all):
 
