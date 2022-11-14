@@ -6,6 +6,7 @@ from tesseract_robotics.tesseract_common import ResourceLocator, SimpleLocatedRe
 class GazeboModelResourceLocator(ResourceLocator):
     def __init__(self):
         super().__init__()
+        
         model_env_path = os.environ["GAZEBO_MODEL_PATH"]
         self.model_paths = model_env_path.split(os.pathsep)
         assert len(self.model_paths) != 0, "No GAZEBO_MODEL_PATH specified!"

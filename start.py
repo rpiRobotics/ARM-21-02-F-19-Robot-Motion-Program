@@ -10,7 +10,7 @@ from pathlib import Path
 from pandas import *
 
 
-from toolbox.robot_def import *
+from toolbox.robots_def import *
 from redundancy_resolution.redundancy_resolution import *
 from cmd_gen.cmd_gen import *
 from toolbox.abb_utils import *
@@ -102,10 +102,15 @@ class SprayGUI(QDialog):
         self.originalPalette = QApplication.palette()
 
         ###tesseract visualizer
-        self.tes_env=Tess_Env('config/urdf/')
+        try:
+            self.tes_env=Tess_Env('config/urdf/')
+        except Exception as e:
+            print(e)
+            print("Start without tesseract visualizer")
+            self.tes_env=None
 
         # robot box
-        robot_list=['','FANUC_m710ic','FANUC_m900ia','FANUC_m10ia','ABB_1200_5_90','ABB_6640_180_255']
+        robot_list=['','FANUC_m710ic','FANUC_m900ia','FANUC_m10ia','FANUC_lrmate200id','ABB_1200_5_90','ABB_6640_180_255']
         self.robotComBox1=QComboBox()
         self.robotComBox1.addItems(robot_list)
         self.robotComBox1.currentTextChanged.connect(self.robot1_change)
@@ -194,9 +199,13 @@ class SprayGUI(QDialog):
             if 'ABB' in robot1_choose:
                 self.robot1MotionSend=MotionSendABB             ###TODO: add realrobot argument (IP, repeatibility)
             elif 'FANUC' in robot1_choose:
+                self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
                 self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)           
+                # self.robot1=m10ia(d=50)
         self.robot1_name=robot1_choose
-        self.tes_env.update_pose(self.robot1_name,np.eye(4))
+
+        if self.tes_env is not None:
+            self.tes_env.update_pose(self.robot1_name,np.eye(4))
 
     def robot2_change(self,robot2_choose):
         print("Robot2 not supported now.")
@@ -256,6 +265,10 @@ class SprayGUI(QDialog):
         self.redResLeftBox.setLayout(layout)
 
     def reset_visualization(self):
+
+        if self.tes_env is None:
+            return
+
         H=np.eye(4)
         H[:-1,-1]=100*np.ones(3)
         self.tes_env.update_pose('ABB_6640_180_255',H)
@@ -582,19 +595,25 @@ class SprayGUI(QDialog):
         self.run2_result.setText('Motion Program Generated\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
 
     def read_Solution(self):
-        solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-        self.des_curve_filename = solution_dir+'/Curve_in_base_frame.csv'
-        self.des_curvejs_filename = solution_dir+'/Curve_js.csv'
-        self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
-        curve_stringidx1=solution_dir.index('data/')
-        part_name=solution_dir[curve_stringidx1+5:]
-        curve_stringidx2=part_name.index('/')
-        part_name=part_name[:curve_stringidx2]
-        ###TODO: warning if not a valid solution directory
-        part_pose_m=copy.deepcopy(self.part_pose)
-        part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
 
-        self.tes_env.update_pose(part_name,part_pose_m)
+        try:
+            solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+            self.des_curve_filename = solution_dir+'/Curve_in_base_frame.csv'
+            self.des_curvejs_filename = solution_dir+'/Curve_js.csv'
+            self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
+            curve_stringidx1=solution_dir.index('data/')
+            part_name=solution_dir[curve_stringidx1+5:]
+            curve_stringidx2=part_name.index('/')
+            part_name=part_name[:curve_stringidx2]
+            ###TODO: warning if not a valid solution directory
+            part_pose_m=copy.deepcopy(self.part_pose)
+            part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
+            self.solutionDirtext.setText(solution_dir)
+        except Exception as e:
+            print(e)
+
+        if self.tes_env is not None:
+            self.tes_env.update_pose(part_name,part_pose_m)
         
     def motionProgUpdateRight(self):
         
@@ -652,20 +671,30 @@ class SprayGUI(QDialog):
         velstdlabel=QLabel('Velocity Std (%):')
         velstdlabel.setBuddy(self.vel_std_box)
 
+        self.extend_start_box= QDoubleSpinBox()
+        self.extend_start_box.setMinimum(1)
+        self.extend_start_box.setMaximum(500)
+        self.extend_start_box.setValue(100)
+        extend_start_label=QLabel('Ext Start:')
+        extend_start_label.setBuddy(self.extend_start_box)
+
+        self.extend_end_box= QDoubleSpinBox()
+        self.extend_end_box.setMinimum(1)
+        self.extend_end_box.setMaximum(500)
+        self.extend_end_box.setValue(100)
+        extend_end_label=QLabel('Ext End:')
+        extend_end_label.setBuddy(self.extend_end_box)
 
         self.visual_runButton=QPushButton("Run Visualization")
         self.visual_runButton.setDefault(True)
         self.visual_runButton.clicked.connect(self.run_Visualization)
         self.run3_result=QLabel('')
 
-
         self.moupdate_runButton=QPushButton("Run Motion Update")
         self.moupdate_runButton.setDefault(True)
         self.moupdate_runButton.clicked.connect(self.run_MotionProgUpdate)
         self.run4_result=QLabel('')
         self.run4_result_img=QLabel('')
-
-        
 
         # boxes
         vellayout=QHBoxLayout()
@@ -681,6 +710,12 @@ class SprayGUI(QDialog):
         tollayout.addWidget(velstdlabel)
         tollayout.addWidget(self.vel_std_box)
 
+        extendlayout=QHBoxLayout()
+        extendlayout.addWidget(extend_start_label)
+        extendlayout.addWidget(self.extend_start_box)
+        extendlayout.addWidget(extend_end_label)
+        extendlayout.addWidget(self.extend_end_box)
+
         # add layout
         layout = QVBoxLayout()
         layout.addWidget(solution_button)
@@ -694,6 +729,7 @@ class SprayGUI(QDialog):
         layout.addWidget(self.cmd_filenametext)
         layout.addLayout(vellayout)
         layout.addLayout(tollayout)
+        layout.addLayout(extendlayout)
         layout.addWidget(self.visual_runButton)
         layout.addWidget(self.moupdate_runButton)
         layout.addWidget(self.run4_result)
@@ -738,6 +774,11 @@ class SprayGUI(QDialog):
             self.cmd_filenametext.setText(self.cmd_filename)
     
     def run_Visualization(self):
+
+        if self.tes_env is None:
+            self.run3_result.setText("Tesseract Visualizer is not activated")
+            return
+
         if self.robot1 is None:
             self.run3_result.setText("Robot1 not yet choosed.")
             return
@@ -771,8 +812,6 @@ class SprayGUI(QDialog):
         self.visual_timer_thread.start()
         self.visual_thread.start()
 
-
-
     def run_MotionProgUpdate(self):
 
         if self.robot1 is None:
@@ -787,6 +826,8 @@ class SprayGUI(QDialog):
         errtol=float(self.error_box.value())
         angerrtol=float(self.ang_error_box.value())
         velstdtol=float(self.vel_std_box.value())
+        extstart=float(self.extend_start_box.value())
+        extend=float(self.extend_end_box.value())
         self.run4_result.setText('Updating Motion Program')
 
         ## delete previous tmp result
@@ -809,8 +850,8 @@ class SprayGUI(QDialog):
         self.moupdate_timer=Timer()
 
         try:    ###TODO: add error box popup
-            self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs_filename,\
-                errtol,angerrtol,velstdtol)
+            self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs_filename,\
+                errtol,angerrtol,velstdtol,extstart,extend)
             self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
                 setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\
                     self.prog_MotionProgUpdate,self.res_MotionProgUpdate)
@@ -858,7 +899,7 @@ class SprayGUI(QDialog):
         
         result_text='Updating Motion Program. Time:'+time.strftime("%H:%M:%S", time.gmtime(n))
         if speed is not None and error is not None and angle_error is not None:
-            result_text+='\nCurrent Max Error:'+str(round(np.max(error),2))+' mm, Max Ang Error:'+str(round(np.max(angle_error),2))+' deg'+\
+            result_text+='\nCurrent Max Error:'+str(round(np.max(error),2))+' mm, Max Ang Error:'+str(round(np.max(np.rad2deg(angle_error)),2))+' deg'+\
                 '\nAve. Speed:'+str(round(np.mean(speed),2))+' mm/sec, Std. Speed:'+str(round(np.std(speed),2))+' mm/sec, Std/Ave Speed:'+str(round(100*np.std(speed)/np.mean(speed),2))+' %'
         self.run4_result.setText(result_text)
 

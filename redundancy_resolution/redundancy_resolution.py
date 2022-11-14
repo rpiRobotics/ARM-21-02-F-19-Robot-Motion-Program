@@ -5,6 +5,10 @@ import numpy as np
 
 def redundancy_resolution_baseline(filename, robot):
 
+    ## fanuc has different joint rotation axis
+    if 'FANUC' in robot.robot_name:
+        robot.j_compensation=np.array([1,1,1,1,1,1])
+
     curve = np.loadtxt(filename,delimiter=',')
     H = pose_opt(robot,curve[:,:3],curve[:,3:])
     curve_base,curve_normal_base=curve_frame_conversion(curve[:,:3],curve[:,3:],H)
@@ -20,11 +24,19 @@ def redundancy_resolution_baseline(filename, robot):
     else:
         curve_js=[]
 
+    if 'FANUC' in robot.robot_name:
+        curve_js[:,2:]=-1*curve_js[:,2:]
+        robot.j_compensation=np.array([1,1,-1,-1,-1,-1])
+
     return curve_base,curve_normal_base,curve_js,H
 
 def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd=1000):
     print(baseline_pose_filename)
     curve = np.loadtxt(filename,delimiter=',')
+
+    ## fanuc has different joint rotation axis
+    if 'FANUC' in robot.robot_name:
+        robot.j_compensation=np.array([1,1,1,1,1,1])
 
     opt=lambda_opt(curve[:,:3],curve[:,3:],robot1=robot,steps=500,v_cmd=v_cmd)
 
@@ -67,5 +79,9 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd
 
     #########################################restore only given points, saves time##########################################################
     curve_js=opt.single_arm_stepwise_optimize(q_init,curve_base,curve_normal_base)
+
+    if 'FANUC' in robot.robot_name:
+        curve_js[:,2:]=-1*curve_js[:,2:]
+        robot.j_compensation=np.array([1,1,-1,-1,-1,-1])
 
     return curve_base,curve_normal_base,curve_js,H

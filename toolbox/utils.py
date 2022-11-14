@@ -223,16 +223,27 @@ def car2js(robot,q_init,curve_fit,curve_fit_R):
 	###calculate corresponding joint configs
 	curve_fit_js=[]
 	if curve_fit.shape==(3,):### if a single point
-		temp_q=robot.inv(curve_fit,curve_fit_R,last_joints=q_init)[0]
-		curve_fit_js.append(temp_q)
+
+		inv_sol = robot.inv(curve_fit,curve_fit_R,last_joints=q_init)
+		if len(inv_sol)>0:
+			temp_q=inv_sol[0]
+			curve_fit_js.append(temp_q)
 
 	else:
 		for i in range(len(curve_fit)):
 			###choose inv_kin closest to previous joints
 			if len(curve_fit_js)>1:
-				temp_q=robot.inv(curve_fit[i],curve_fit_R[i],last_joints=curve_fit_js[-1])[0]
+				inv_sol = robot.inv(curve_fit[i],curve_fit_R[i],last_joints=curve_fit_js[-1])
+				if len(inv_sol)>0:
+					temp_q=inv_sol[0]
+				else:
+					continue
 			else:
-				temp_q=robot.inv(curve_fit[i],curve_fit_R[i],last_joints=q_init)[0]
+				inv_sol = robot.inv(curve_fit[i],curve_fit_R[i],last_joints=q_init)
+				if len(inv_sol)>0:
+					temp_q=inv_sol[0]
+				else:
+					continue
 			
 			curve_fit_js.append(temp_q)
 

@@ -5,6 +5,7 @@ from general_robotics_toolbox import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 sys.path.append('../toolbox')
+sys.path.append('toolbox')
 from robots_def import *
 from utils import *
 from lambda_calc import *
