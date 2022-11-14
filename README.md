@@ -18,7 +18,19 @@ Please note that the GUI is an ongoing developed feature. Contact the authors fo
 The GUI currently only support FANUC and ABB robot.
 
 ## Tesseract Visualization
-Once the GUI is running, on the browser type in `localhost:8000`, the Tesseract environment will be shown.
+
+### Pre-request
+
+Set up an environment variable `GAZEBO_MODEL_PATH` the the value with the path to `(the repo)/config/urdf`
+
+#### Windows
+For Windows os, please follow this [link](https://docs.oracle.com/en/database/oracle/machine-learning/oml4r/1.5.1/oread/creating-and-modifying-environment-variables-on-windows.html#GUID-DD6F9982-60D5-48F6-8270-A27EC53807D0) to setup your environment variables.
+
+### Launch Visualization
+
+Once the GUI is running, on the browser type in `localhost:8000`, the Tesseract environment will be shown. The selected robot will be moved to the center of the simulation.
+
+In motion program update stage, once the solution file and the command file is selected, you can click `Run Visualization`. The robot will move as the ideal (i.e. if there's no joint constraints) command.
 
 ## Dependancies
 ### Robot Drivers:
