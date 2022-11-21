@@ -18,6 +18,12 @@ Please note that the GUI is an ongoing developed feature. Contact the authors fo
 The GUI currently only support FANUC and ABB robot.
 
 ## Tesseract Visualization
+
+### Pre-Request
+Before using Tesseract Visualization, you should set the environment variable `GAZEBO_MODEL_PATH` to `(path_to_repo)/config/urdf`. For windows, follow [this step](https://docs.oracle.com/en/database/oracle/machine-learning/oml4r/1.5.1/oread/creating-and-modifying-environment-variables-on-windows.html#GUID-DD6F9982-60D5-48F6-8270-A27EC53807D0) to set the variables.
+
+### Run
+
 Once the GUI is running, on the browser type in `localhost:8000`, the Tesseract environment will be shown.
 
 ## Dependancies
