@@ -2,10 +2,7 @@ import numpy as np
 from general_robotics_toolbox import *
 from pandas import read_csv
 import sys
-from io import StringIO
 
-# sys.path.append('../abb_motion_program_exec')
-from abb_motion_program_exec_client import *
 sys.path.append('../toolbox')
 from robots_def import *
 from error_check import *

@@ -101,6 +101,8 @@ class SprayGUI(QDialog):
 
         self.originalPalette = QApplication.palette()
 
+        self.robot_ip='127.0.0.1'
+        self.realrobot=False
         ###tesseract visualizer
         try:
             self.tes_env=Tess_Env('config/urdf/')
@@ -137,6 +139,10 @@ class SprayGUI(QDialog):
         ip_set_button.setDefault(False)
         ip_set_button.clicked.connect(self.read_ip)
 
+        self.realrobot_button= QPushButton('Real Robot')
+        self.realrobot_button.setDefault(False)
+        self.realrobot_button.clicked.connect(self.changeColor)
+
 
         ## Redundancy Resolution Box
         self.redundancyResLeft()
@@ -156,6 +162,7 @@ class SprayGUI(QDialog):
         toplayout.addWidget(IPlabel)
         toplayout.addWidget(self.robot_ip_box)
         toplayout.addWidget(ip_set_button)
+        toplayout.addWidget(self.realrobot_button)
 
 
         ## main layout
@@ -185,6 +192,17 @@ class SprayGUI(QDialog):
         self.robot2=None
         self.robot2_name=None
 
+    def changeColor(self):
+        # if button is checked
+        if not self.realrobot:
+            # setting background color to light-blue
+            self.realrobot_button.setStyleSheet("background-color : lightgreen")
+            self.realrobot=True
+        # if it is unchecked
+        else:
+            # set background color back to light-grey
+            self.realrobot_button.setStyleSheet("background-color : lightgray")
+            self.realrobot=False
     def changeStyle(self, styleName):
         QApplication.setStyle(QStyleFactory.create(styleName))
         self.changePalette()
@@ -851,11 +869,12 @@ class SprayGUI(QDialog):
 
         try:    ###TODO: add error box popup
             self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs_filename,\
-                errtol,angerrtol,velstdtol,extstart,extend)
+                errtol,angerrtol,velstdtol,extstart,extend,self.realrobot)
             self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
                 setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\
                     self.prog_MotionProgUpdate,self.res_MotionProgUpdate)
         except:
+            traceback.print_exc()
             self.showdialog(traceback.format_exc())
 
         ## edit interface

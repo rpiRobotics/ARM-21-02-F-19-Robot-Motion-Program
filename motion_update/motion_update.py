@@ -1,9 +1,10 @@
 from .ilc_toolbox import *
+from realrobot import *
 from pathlib import Path
 import traceback
 
 def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs_filename,\
-    err_tol,angerr_tol,velstd_tol,extstart,extend):
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot):
     try:
         curve = read_csv(desired_curve_filename,header=None).values
         curve=np.array(curve)
@@ -12,14 +13,14 @@ def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_cu
 
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot.def_path:
-            return error_descent_abb(filepath,robot,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls')
+            return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=True)
         if 'FANUC' in robot.def_path:
             return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
     except:
         traceback.print_exc()
 
-def error_descent_abb(filepath,robot,robotMotionSend,velocity,desired_curve,desired_curve_js,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name=''):
+def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js,\
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',realrobot=False):
 
     curve=desired_curve
     curve_js=desired_curve_js
@@ -27,10 +28,9 @@ def error_descent_abb(filepath,robot,robotMotionSend,velocity,desired_curve,desi
     ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
     Path(ilc_output).mkdir(exist_ok=True)
 
-    ms = robotMotionSend()
+    ms = robotMotionSend('http://'+robot_ip+':80')
 
     breakpoints,primitives,p_bp,q_bp=ms.extract_data_from_cmd(filepath+'/command.csv')
-
 
     alpha = 0.5 # for gradient descent
     alpha_error_dir = 0.8 # for pushing in error direction
@@ -55,14 +55,19 @@ def error_descent_abb(filepath,robot,robotMotionSend,velocity,desired_curve,desi
     max_error_prev = 999999999
     for i in range(iteration_max):
 
-        ###execute,curve_fit_js only used for orientation       ###TODO: add save_ls
-        log_results=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z)#,save_ls,ilc_output+save_name)
-
-        ##############################data analysis#####################################
-        lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.logged_data_analysis(robot,log_results)
+        if realrobot:
+            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=5)
+            lam, curve_exe, curve_exe_R, speed=logged_data_analysis(robot,timestamp,curve_exe_js)
+        else:
+            ###execute,curve_fit_js only used for orientation       ###TODO: add save_ls
+            log_results=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z)#,save_ls,ilc_output+save_name)
+            ##############################data analysis#####################################
+            lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.logged_data_analysis(robot,log_results)
 
         #############################chop extension off##################################
         lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.chop_extension(curve_exe, curve_exe_R,curve_exe_js, speed, timestamp,curve[0,:3],curve[-1,:3])
+        
+
         ave_speed=np.mean(speed)
         std_speed=np.std(speed)
 
@@ -98,8 +103,7 @@ def error_descent_abb(filepath,robot,robotMotionSend,velocity,desired_curve,desi
         ax1.set_ylabel('Speed/lamdot (mm/s)', color='g')
         ax2.set_ylabel('Error/Normal Error (mm/deg)', color='b')
         plt.title("Speed and Error Plot")
-        # ax1.legend(loc=0)
-        # ax2.legend(loc=0)
+
         h1, l1 = ax1.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
         ax1.legend(h1+h2, l1+l2, loc=1)
@@ -107,7 +111,6 @@ def error_descent_abb(filepath,robot,robotMotionSend,velocity,desired_curve,desi
         #### save all things
         if save_all_file:
             # save fig
-            plt.legend()
             plt.savefig(ilc_output+'iteration_'+str(i))
             plt.savefig(ilc_output+'final_iteration')
             plt.clf()
@@ -168,12 +171,12 @@ def error_descent_abb(filepath,robot,robotMotionSend,velocity,desired_curve,desi
                 de_dp=ilc.get_gradient_from_model_xyz(p_bp,q_bp,breakpoints_blended,curve_blended,peak_error_curve_blended_idx,peak_pose,curve[peak_error_curve_idx,:3],breakpoint_interp_2tweak_indices)
                 p_bp, q_bp=ilc.update_bp_xyz(p_bp,q_bp,de_dp,error[peak],breakpoint_interp_2tweak_indices)
 
-
                 ##################################################################Ori Gradient######################################################################
                 de_ori_dp=ilc.get_gradient_from_model_ori(p_bp,q_bp,breakpoints_blended,curve_R_blended,peak_error_curve_blended_idx,peak_pose,curve[peak_error_curve_idx,3:],breakpoint_interp_2tweak_indices)
                 q_bp=ilc.update_bp_ori(p_bp,q_bp,de_ori_dp,angle_error[peak],breakpoint_interp_2tweak_indices)
     
     return curve_exe_js,speed,error,np.rad2deg(angle_error),breakpoints,primitives,q_bp,p_bp
+
 
 def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js,\
     error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100):
