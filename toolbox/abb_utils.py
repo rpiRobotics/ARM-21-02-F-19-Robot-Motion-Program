@@ -2,7 +2,7 @@ import numpy as np
 from general_robotics_toolbox import *
 from pandas import read_csv
 import sys
-from abb_motion_program_exec_client import *
+from abb_motion_program_exec import *
 from robots_def import *
 from error_check import *
 from toolbox_circular_fit import *

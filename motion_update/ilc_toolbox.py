@@ -5,7 +5,7 @@ import sys
 from io import StringIO
 
 # sys.path.append('../abb_motion_program_exec')
-from abb_motion_program_exec_client import *
+from abb_motion_program_exec import *
 sys.path.append('../toolbox')
 from robots_def import *
 from error_check import *
