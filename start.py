@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QSlider, QSpinBox, QDoubleSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
         QVBoxLayout, QWidget,QFileDialog, QMessageBox)
 from PyQt5.QtGui import QPixmap
-import sys,os,time,traceback
+import sys,os,time,traceback,platform,subprocess
 from pathlib import Path
 from pandas import *
 
@@ -20,6 +20,22 @@ from toolbox.tes_env import *
 
 def msgbtn(i):
     print ("Button pressed is:",i.text())
+
+def ping(host):
+    """
+    Returns True if host (str) responds to a ping request.
+    Remember that a host may not respond to a ping (ICMP) request even if the host name is valid.
+    """
+
+    # Option for the number of packets as a function of
+    param = '-n' if platform.system().lower()=='windows' else '-c'
+
+    # Building the command. Ex: "ping -c 1 google.com"
+    command = ['ping', param, '1', host]
+
+    return subprocess.call(command) == 0
+
+
 # Timer Objecy
 class Timer(QObject):
     finished = pyqtSignal(float)
@@ -232,11 +248,11 @@ class SprayGUI(QDialog):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
 
-        msg.setText("This is a message box")
-        msg.setInformativeText("This is additional information")
-        msg.setWindowTitle("MessageBox demo")
-        msg.setDetailedText("The details are as follows:")
-        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        msg.setText(message)
+        # msg.setInformativeText("This is additional information")
+        # msg.setWindowTitle("MessageBox demo")
+        # msg.setDetailedText("The details are as follows:")
+        msg.setStandardButtons(QMessageBox.Ok)# | QMessageBox.Cancel)
         msg.buttonClicked.connect(msgbtn)
 
         retval = msg.exec_()
@@ -298,6 +314,11 @@ class SprayGUI(QDialog):
 
     def read_ip(self):
         self.robot_ip= self.robot_ip_box.text()
+        ret = ping(self.robot_ip)
+        if ret:
+            self.showdialog('IP Address Set!')
+        else:
+            self.showdialog('IP Address Not Reachable, Please Check Connection!')
 
     def readCurveFile(self):
         

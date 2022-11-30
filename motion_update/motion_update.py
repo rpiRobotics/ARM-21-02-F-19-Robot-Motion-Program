@@ -37,7 +37,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
 
     ### speed,zone
     s = speeddata(velocity,9999999,9999999,999999)
-    zone=10
+    zone=100
     z = zonedata(False,zone,1.5*zone,1.5*zone,0.15*zone,1.5*zone,0.15*zone) # zone (corner path), CNT100
 
     ### Gradient descent parameters
@@ -150,6 +150,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
             ##########################################calculate gradient######################################
             ######gradient calculation related to nearest 3 points from primitive blended trajectory, not actual one
             ###restore trajectory from primitives
+            print('MAX GRADIENT')
             curve_interp, curve_R_interp, curve_js_interp, breakpoints_blended=form_traj_from_bp(q_bp,primitives,robot)
 
             curve_js_blended,curve_blended,curve_R_blended=blend_js_from_primitive(curve_interp, curve_js_interp, breakpoints_blended, primitives,robot,zone=10)
