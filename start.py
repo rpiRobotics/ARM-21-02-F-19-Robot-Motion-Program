@@ -181,7 +181,7 @@ class SprayGUI(QDialog):
         self.curvejs_pathname=None
         self.des_curve_pathname=None
         self.des_curve_filename=None
-        self.des_curvejs_filename=None
+        self.des_curvejs1_filename=None
         self.des_curvejs_pathname=None
         self.cmd_filename=None
         self.cmd_pathname=None
@@ -288,9 +288,9 @@ class SprayGUI(QDialog):
         ##### transformation param
         if self.dualRobot_box.isChecked():
             baseTransformHeadsup=QLabel('Enter base transformation to skip base pose optimization')
-            baseTransformLayout=QHBoxLayout()
+            baseTransLayout=QHBoxLayout()
+            # baseRotLayout=QHBoxLayout()
             self.r2_basePx_box=QLineEdit()
-            # self.r2_basePx_box.resize(10,20)
             r2_basePx_label=QLabel('Px')
             r2_basePx_label.setBuddy(self.r2_basePx_box)
             self.r2_basePy_box=QLineEdit()
@@ -302,14 +302,28 @@ class SprayGUI(QDialog):
             self.r2_baseRz_box=QLineEdit()
             r2_baseRz_label=QLabel('Rz')
             r2_baseRz_label.setBuddy(self.r2_baseRz_box)
-            baseTransformLayout.addWidget(r2_basePx_label)
-            baseTransformLayout.addWidget(self.r2_basePx_box)
-            baseTransformLayout.addWidget(r2_basePy_label)
-            baseTransformLayout.addWidget(self.r2_basePy_box)
-            baseTransformLayout.addWidget(r2_basePz_label)
-            baseTransformLayout.addWidget(self.r2_basePz_box)
-            baseTransformLayout.addWidget(r2_baseRz_label)
-            baseTransformLayout.addWidget(self.r2_baseRz_box)
+            baseTransLayout.addWidget(r2_basePx_label)
+            baseTransLayout.addWidget(self.r2_basePx_box)
+            baseTransLayout.addWidget(r2_basePy_label)
+            baseTransLayout.addWidget(self.r2_basePy_box)
+            baseTransLayout.addWidget(r2_basePz_label)
+            baseTransLayout.addWidget(self.r2_basePz_box)
+            baseTransLayout.addWidget(r2_baseRz_label)
+            baseTransLayout.addWidget(self.r2_baseRz_box)
+
+            qinit2Headsup=QLabel('Enter Robot2 Joint Initial')
+            qinit2Layout=QHBoxLayout()
+            self.r2init_boxes=[]
+            r2init_labels=[]
+            for j in range(6):
+                self.r2init_boxes.append(QLineEdit())
+                r2init_labels.append(QLabel('q'+str(j+1)))
+                r2init_labels[-1].setBuddy(self.r2init_boxes[-1])
+                qinit2Layout.addWidget(r2init_labels[-1])
+                qinit2Layout.addWidget(self.r2init_boxes[-1])
+
+            self.opt_base_box=QCheckBox("Optimize Base")
+            self.opt_base_box.setChecked(True)
         ##########################
 
         self.redres_diffevo_runButton=QPushButton("Run DiffEvo (>1day, needs to run baseline first)")
@@ -330,7 +344,12 @@ class SprayGUI(QDialog):
         layout.addWidget(self.v_cmd_box)
 
         if self.dualRobot_box.isChecked():
-            layout.addLayout(baseTransformLayout)
+            layout.addWidget(baseTransformHeadsup)
+            layout.addLayout(baseTransLayout)
+            # layout.addLayout(baseRotLayout)
+            layout.addWidget(qinit2Headsup)
+            layout.addLayout(qinit2Layout)
+            layout.addWidget(self.opt_base_box)
 
         layout.addWidget(self.redres_diffevo_runButton)
         layout.addWidget(self.run1_result)
@@ -420,6 +439,7 @@ class SprayGUI(QDialog):
             baseline_pose_filename=os.path.dirname(self.curve_filename)+'/'+self.robot1_name+'/baseline/curve_pose.csv'
             self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,baseline_pose_filename,self.robot1,v_cmd)
         else:
+            curve_dir=os.path.dirname(self.curve_filename)
             if self.robot2_name is None:
                 self.run2_result.setText("Robot2 not yet choosed.")
                 return
@@ -428,11 +448,18 @@ class SprayGUI(QDialog):
                 return
             ### set robot2
             if 'ABB' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=curve_dir+'/tcp_workpiece.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
             elif 'FANUC' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=curve_dir+'/tcp_workpiece.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
             #################################
-            self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,self.robot1,self.robot2,v_cmd)
+            base_T=np.eye(4)
+            base_T[:3,:3]=Rz(float(self.r2_baseRz_box.text()))
+            base_T[:3,-1]=np.array([float(self.r2_basePx_box.text()),float(self.r2_basePy_box.text()),float(self.r2_basePz_box.text())])
+            q_init2=[]
+            for j in range(6):
+                q_init2.append(float(self.r2init_boxes[j].text()))
+            q_init2=np.array(q_init2)
+            self.redres_worker=Worker(redundancy_resolution_diffevo_dual,self.curve_filename,base_T,self.robot1,self.robot2,q_init2,int(v_cmd),self.opt_base_box.isChecked())
 
         self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread=\
             setup_worker_timer(self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread,\
@@ -501,7 +528,7 @@ class SprayGUI(QDialog):
             else:
                 self.run1_result.setText('Redundancy Resolution. No JS Solution. \nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
         else:
-            robot2_base,curve_js1,curve_js2,run_duration=result
+            curve_js1,curve_js2,robot2_base,run_duration=result
             save_filepath=self.curve_pathname+'/'+self.robot1_name+'_'+self.robot2_name+'/diffevo/'
             Path(save_filepath).mkdir(exist_ok=True)
             DataFrame(curve_js1).to_csv(save_filepath+'Curve_js1.csv',header=False,index=False)
@@ -598,9 +625,9 @@ class SprayGUI(QDialog):
                 return
             ### set robot2
             if 'ABB' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
             elif 'FANUC' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
             #################################
             self.moprog_worker=Worker(motion_program_generation_baseline,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,total_seg)
 
@@ -649,9 +676,9 @@ class SprayGUI(QDialog):
                 return
             ### set robot2
             if 'ABB' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
             elif 'FANUC' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
             #################################
             self.moprog_worker=Worker(motion_program_generation_greedy,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,greedy_thresh)
 
@@ -727,41 +754,6 @@ class SprayGUI(QDialog):
             df.to_csv(save_filepath+'command2.csv',header=True,index=False)
 
         self.run2_result.setText('Motion Program Generated\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
-
-    def prog_Visualization(self,n):
-        
-        self.run3_result.setText('Running Visualization. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
-
-    def res_Visualization(self,result):
-
-        if len(result) <= 1:
-            run_duration=result[0]
-            self.run3_result.setText('Visualization Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
-            return
-
-        self.run3_result.setText('Visualzation on localhost:8000\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
-
-
-    def read_Solution(self):
-
-        try:
-            solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-            self.des_curve_filename = solution_dir+'/Curve_in_base_frame.csv'
-            self.des_curvejs_filename = solution_dir+'/Curve_js.csv'
-            self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
-            curve_stringidx1=solution_dir.index('data/')
-            part_name=solution_dir[curve_stringidx1+5:]
-            curve_stringidx2=part_name.index('/')
-            part_name=part_name[:curve_stringidx2]
-            ###TODO: warning if not a valid solution directory
-            part_pose_m=copy.deepcopy(self.part_pose)
-            part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
-            self.solutionDirtext.setText(solution_dir)
-        except Exception as e:
-            print(e)
-
-        if self.tes_env is not None:
-            self.tes_env.update_pose(part_name,part_pose_m)
         
     def motionProgUpdateRight(self):
         
@@ -858,11 +850,7 @@ class SprayGUI(QDialog):
         layout = QVBoxLayout()
         layout.addWidget(solution_button)
         layout.addWidget(self.solutionDirtext)
-
-        # layout.addWidget(descurvebutton)
-        # layout.addWidget(self.des_curve_filenametext)
-        # layout.addWidget(descurvejsbutton)
-        # layout.addWidget(self.des_curvejs_filenametext)
+        
         layout.addWidget(filebutton)
         layout.addWidget(self.cmd_filenametext)
         layout.addLayout(vellayout)
@@ -875,29 +863,38 @@ class SprayGUI(QDialog):
         layout.addStretch(1)
         self.moProgUpRightBox.setLayout(layout)
     
-    def readDesiredCurveFile(self):
-        
-        dlg = QFileDialog()
-        dlg.setFileMode(QFileDialog.AnyFile)
-        dlg.setFilter(QDir.Files)
+    def read_Solution(self):
 
-        if dlg.exec_():
-            filenames = dlg.selectedFiles()
-            self.des_curve_filename = filenames[0]
-            self.des_curve_pathname = os.path.dirname(self.des_curve_filename)
-            self.des_curve_filenametext.setText(self.des_curve_filename)
-    
-    def readDesiredCurveJsFile(self):
-        
-        dlg = QFileDialog()
-        dlg.setFileMode(QFileDialog.AnyFile)
-        dlg.setFilter(QDir.Files)
+        try:
+            solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+            ### read curve
+            if not self.dualRobot_box.isChecked():
+                self.des_curve_filename = solution_dir+'/Curve_in_base_frame.csv'
+            else:
+                self.des_curve_filename = solution_dir+'/../../Curve_dense.csv'
+            ### read js
+            self.des_curvejs1_filename = solution_dir+'/Curve_js1.csv'
+            if self.dualRobot_box.isChecked():
+                self.des_curvejs2_filename = solution_dir+'/Curve_js2.csv'
+            ### read part/base pose
+            if not self.dualRobot_box.isChecked():
+                self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
+            else:
+                self.base2_pose=np.loadtxt(solution_dir+'/base.csv',delimiter=',')
+            
+            curve_stringidx1=solution_dir.index('data/')
+            part_name=solution_dir[curve_stringidx1+5:]
+            curve_stringidx2=part_name.index('/')
+            part_name=part_name[:curve_stringidx2]
+            ###TODO: warning if not a valid solution directory
+            part_pose_m=copy.deepcopy(self.part_pose)
+            part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
+            self.solutionDirtext.setText(solution_dir)
+        except Exception as e:
+            print(e)
 
-        if dlg.exec_():
-            filenames = dlg.selectedFiles()
-            self.des_curvejs_filename = filenames[0]
-            self.des_curvejs_pathname = os.path.dirname(self.des_curvejs_filename)
-            self.des_curvejs_filenametext.setText(self.des_curvejs_filename)
+        if self.tes_env is not None:
+            self.tes_env.update_pose(part_name,part_pose_m)
     
     def readCmdFile(self):
         
@@ -931,7 +928,7 @@ class SprayGUI(QDialog):
         self.visual_timer_thread=QThread()
         self.visual_timer=Timer()
 
-        curve_js=np.loadtxt(self.des_curvejs_filename,delimiter=',')
+        curve_js=np.loadtxt(self.des_curvejs1_filename,delimiter=',')
         try:    ###TODO: add error box popup
             self.visual_worker=Worker(self.tes_env.viewer_trajectory,self.robot1_name,curve_js[::100])
             self.visual_worker,self.visual_thread,self.visual_timer,self.visual_timer_thread=\
@@ -949,16 +946,33 @@ class SprayGUI(QDialog):
         ## start thread
         self.visual_timer_thread.start()
         self.visual_thread.start()
+    
+    def prog_Visualization(self,n):
+        
+        self.run3_result.setText('Running Visualization. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
+
+    def res_Visualization(self,result):
+
+        if len(result) <= 1:
+            run_duration=result[0]
+            self.run3_result.setText('Visualization Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            return
+
+        self.run3_result.setText('Visualzation on localhost:8000\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
 
     def run_MotionProgUpdate(self):
 
         if self.robot1 is None:
             self.run4_result.setText("Robot1 not yet choosed.")
             return
-
         if self.cmd_filename is None:
             self.run4_result.setText("Command file not yet choosed.")
             return
+
+        if 'ABB' in self.robot2_name:
+            self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+        elif 'FANUC' in self.robot2_name:
+            self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
         
         vel=int(self.vel_box.value())
         errtol=float(self.error_box.value())
@@ -988,8 +1002,25 @@ class SprayGUI(QDialog):
         self.moupdate_timer=Timer()
 
         try:    ###TODO: add error box popup
-            self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs_filename,\
-                errtol,angerrtol,velstdtol,extstart,extend)
+            if not self.dualRobot_box.isChecked():
+                self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,\
+                    errtol,angerrtol,velstdtol,extstart,extend)
+            else:
+                if self.robot2_name is None:
+                    self.run2_result.setText("Robot2 not yet choosed.")
+                    return
+                if self.curvejs2_filename is None:
+                    self.run2_result.setText("Solution folder not chosen or Curve_js2 not exists")
+                    return
+                ### set robot2
+                if 'ABB' in self.robot2_name:
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                elif 'FANUC' in self.robot2_name:
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                #################################
+                self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot2,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,self.des_curvejs2_filename,\
+                    errtol,angerrtol,velstdtol,extstart,extend)
+            
             self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
                 setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\
                     self.prog_MotionProgUpdate,self.res_MotionProgUpdate)
@@ -1048,14 +1079,23 @@ class SprayGUI(QDialog):
             self.run4_result.setText('Motion Program Update. Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             return
 
-        curve_exe_js,speed,error,angle_error,breakpoints,primitives,q_bp,p_bp,run_duration=result
+        
         vel=int(self.vel_box.value())
 
-        # save motion program commands
-        # df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
-        df=DataFrame({'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
-        df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command.csv',header=True,index=False)
-        DataFrame(curve_exe_js).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js_exe.csv',header=False,index=False)
+        # save motion program commands and js execution
+        if self.dualRobot_box.isChecked():
+            curve_exe_js,speed,error,angle_error,breakpoints,primitives,q_bp,p_bp,run_duration=result
+            df=DataFrame({'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
+            df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command.csv',header=True,index=False)
+            DataFrame(curve_exe_js).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js_exe.csv',header=False,index=False)
+        else:
+            curve_exe_js1,curve_exe_js2,speed,error,angle_error,breakpoints,primitives1,q_bp1,p_bp1,primitives2,q_bp2,p_bp2,run_duration=result
+            df=DataFrame({'primitives':primitives1,'p_bp':p_bp1,'q_bp':q_bp1})
+            df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command1.csv',header=True,index=False)
+            df=DataFrame({'primitives':primitives2,'p_bp':p_bp2,'q_bp':q_bp2})
+            df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command2.csv',header=True,index=False)
+            DataFrame(curve_exe_js1).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js1_exe.csv',header=False,index=False)
+            DataFrame(curve_exe_js2).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js2_exe.csv',header=False,index=False)
 
         result_text='Motion Program Update. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration))+\
             '\nCommand file saved at\n'+self.cmd_pathname+'/result_speed_'+str(vel)
