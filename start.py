@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QSlider, QSpinBox, QDoubleSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
         QVBoxLayout, QWidget,QFileDialog, QMessageBox)
 from PyQt5.QtGui import QPixmap
-import sys,os,time,traceback
+import sys,os,time,traceback,platform,subprocess
 from pathlib import Path
 from pandas import *
 
@@ -20,6 +20,22 @@ from toolbox.tes_env import *
 
 def msgbtn(i):
     print ("Button pressed is:",i.text())
+
+def ping(host):
+    """
+    Returns True if host (str) responds to a ping request.
+    Remember that a host may not respond to a ping (ICMP) request even if the host name is valid.
+    """
+
+    # Option for the number of packets as a function of
+    param = '-n' if platform.system().lower()=='windows' else '-c'
+
+    # Building the command. Ex: "ping -c 1 google.com"
+    command = ['ping', param, '1', host]
+
+    return subprocess.call(command) == 0
+
+
 # Timer Objecy
 class Timer(QObject):
     finished = pyqtSignal(float)
@@ -101,6 +117,8 @@ class SprayGUI(QDialog):
 
         self.originalPalette = QApplication.palette()
 
+        self.robot_ip='127.0.0.1'
+        self.realrobot=False
         ###tesseract visualizer
         try:
             self.tes_env=Tess_Env('config/urdf/')
@@ -142,6 +160,11 @@ class SprayGUI(QDialog):
         self.dualRobot_box.setChecked(False)
         self.dualRobot_box.stateChanged.connect(self.dualRobotActFunc)
 
+        ### real Robot Activation
+        self.realrobot_button= QPushButton('Real Robot')
+        self.realrobot_button.setDefault(False)
+        self.realrobot_button.clicked.connect(self.changeColor)
+
         ## Redundancy Resolution Box
         self.redundancyResLeft()
         ## Motion Program Generation Box
@@ -161,6 +184,7 @@ class SprayGUI(QDialog):
         self.toplayout.addWidget(self.robot_ip_box)
         self.toplayout.addWidget(ip_set_button)
         self.toplayout.addWidget(self.dualRobot_box)
+        self.toplayout.addWidget(self.realrobot_button)
 
         ## main layout
         self.mainLayout = QGridLayout()
@@ -190,6 +214,17 @@ class SprayGUI(QDialog):
         self.robot2=None
         self.robot2_name=None
 
+    def changeColor(self):
+        # if button is checked
+        if not self.realrobot:
+            # setting background color to light-blue
+            self.realrobot_button.setStyleSheet("background-color : lightgreen")
+            self.realrobot=True
+        # if it is unchecked
+        else:
+            # set background color back to light-grey
+            self.realrobot_button.setStyleSheet("background-color : lightgray")
+            self.realrobot=False
     def changeStyle(self, styleName):
         QApplication.setStyle(QStyleFactory.create(styleName))
         self.changePalette()
@@ -220,11 +255,11 @@ class SprayGUI(QDialog):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
 
-        msg.setText("This is a message box")
-        msg.setInformativeText("This is additional information")
-        msg.setWindowTitle("MessageBox demo")
-        msg.setDetailedText("The details are as follows:")
-        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        msg.setText(message)
+        # msg.setInformativeText("This is additional information")
+        # msg.setWindowTitle("MessageBox demo")
+        # msg.setDetailedText("The details are as follows:")
+        msg.setStandardButtons(QMessageBox.Ok)# | QMessageBox.Cancel)
         msg.buttonClicked.connect(msgbtn)
 
         retval = msg.exec_()
@@ -372,6 +407,11 @@ class SprayGUI(QDialog):
 
     def read_ip(self):
         self.robot_ip= self.robot_ip_box.text()
+        ret = ping(self.robot_ip)
+        if ret:
+            self.showdialog('IP Address Set!')
+        else:
+            self.showdialog('IP Address Not Reachable, Please Check Connection!')
 
     def readCurveFile(self):
         
@@ -1004,7 +1044,7 @@ class SprayGUI(QDialog):
         try:    ###TODO: add error box popup
             if not self.dualRobot_box.isChecked():
                 self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend)
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot)
             else:
                 if self.robot2_name is None:
                     self.run2_result.setText("Robot2 not yet choosed.")
@@ -1019,12 +1059,13 @@ class SprayGUI(QDialog):
                     self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
                 #################################
                 self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot2,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,self.des_curvejs2_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend)
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot)
             
             self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
                 setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\
                     self.prog_MotionProgUpdate,self.res_MotionProgUpdate)
         except:
+            traceback.print_exc()
             self.showdialog(traceback.format_exc())
 
         ## edit interface
