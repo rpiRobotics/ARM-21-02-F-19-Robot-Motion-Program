@@ -137,6 +137,10 @@ class SprayGUI(QDialog):
         ip_set_button.setDefault(False)
         ip_set_button.clicked.connect(self.read_ip)
 
+        ### Dual Robot Activation
+        self.dualRobot_box=QCheckBox("Dual Robot")
+        self.dualRobot_box.setChecked(False)
+        self.dualRobot_box.stateChanged.connect(self.dualRobotActFunc)
 
         ## Redundancy Resolution Box
         self.redundancyResLeft()
@@ -146,25 +150,25 @@ class SprayGUI(QDialog):
         self.motionProgUpdateRight()
 
         ## toplayout
-        toplayout=QHBoxLayout()
-        toplayout.addWidget(robotlabel1)
-        toplayout.addWidget(self.robotComBox1)
-        toplayout.addStretch(1)
-        toplayout.addWidget(robotlabel2)
-        toplayout.addWidget(self.robotComBox2)
-        toplayout.addWidget(vis_reset_button)
-        toplayout.addWidget(IPlabel)
-        toplayout.addWidget(self.robot_ip_box)
-        toplayout.addWidget(ip_set_button)
-
+        self.toplayout=QHBoxLayout()
+        self.toplayout.addWidget(robotlabel1)
+        self.toplayout.addWidget(self.robotComBox1)
+        self.toplayout.addStretch(1)
+        self.toplayout.addWidget(robotlabel2)
+        self.toplayout.addWidget(self.robotComBox2)
+        self.toplayout.addWidget(vis_reset_button)
+        self.toplayout.addWidget(IPlabel)
+        self.toplayout.addWidget(self.robot_ip_box)
+        self.toplayout.addWidget(ip_set_button)
+        self.toplayout.addWidget(self.dualRobot_box)
 
         ## main layout
-        mainLayout = QGridLayout()
-        mainLayout.addLayout(toplayout,0,0,1,2)
-        mainLayout.addWidget(self.redResLeftBox,1,0)
-        mainLayout.addWidget(self.moProgGenMidBox,1,1)
-        mainLayout.addWidget(self.moProgUpRightBox,1,2)
-        self.setLayout(mainLayout)
+        self.mainLayout = QGridLayout()
+        self.mainLayout.addLayout(self.toplayout,0,0,1,2)
+        self.mainLayout.addWidget(self.redResLeftBox,1,0)
+        self.mainLayout.addWidget(self.moProgGenMidBox,1,1)
+        self.mainLayout.addWidget(self.moProgUpRightBox,1,2)
+        self.setLayout(self.mainLayout)
 
         self.setWindowTitle('ROBOT PATH OPTIMIZATION GUI')
         self.changeStyle('Windows')
@@ -172,7 +176,8 @@ class SprayGUI(QDialog):
         ###### spray functions variable
         self.curve_pathname=None
         self.curve_filename=None
-        self.curvejs_filename=None
+        self.curvejs1_filename=None
+        self.curvejs2_filename=None
         self.curvejs_pathname=None
         self.des_curve_pathname=None
         self.des_curve_filename=None
@@ -208,7 +213,8 @@ class SprayGUI(QDialog):
             self.tes_env.update_pose(self.robot1_name,np.eye(4))
 
     def robot2_change(self,robot2_choose):
-        print("Robot2 not supported now.")
+
+        self.robot2_name=robot2_choose
     
     def showdialog(self,message):
         msg = QMessageBox()
@@ -224,6 +230,37 @@ class SprayGUI(QDialog):
         retval = msg.exec_()
 
 
+    def dualRobotActFunc(self):
+
+        ########## update all box
+        ## Redundancy Resolution Box
+        self.redundancyResLeft()
+        ## Motion Program Generation Box
+        self.motionProgGenMid()
+        ## Motion Program Update Box
+        self.motionProgUpdateRight()
+        ############################
+
+        ## main layout
+        # self.mainLayout = QGridLayout()
+        # self.mainLayout.addLayout(self.toplayout,0,0,1,2)
+        # self.mainLayout.addWidget(self.redResLeftBox,1,0)
+        # self.mainLayout.addWidget(self.moProgGenMidBox,1,1)
+        # self.mainLayout.addWidget(self.moProgUpRightBox,1,2)
+        # self.setLayout(self.mainLayout)
+        leftitem = self.mainLayout.itemAtPosition(1,0)
+        self.mainLayout.removeItem(leftitem)
+        leftitem.widget().deleteLater()
+        self.mainLayout.addWidget(self.redResLeftBox,1,0)
+        miditem = self.mainLayout.itemAtPosition(1,1)
+        self.mainLayout.removeItem(miditem)
+        miditem.widget().deleteLater()
+        self.mainLayout.addWidget(self.moProgGenMidBox,1,1)
+        rightitem = self.mainLayout.itemAtPosition(1,2)
+        self.mainLayout.removeItem(rightitem)
+        rightitem.widget().deleteLater()
+        self.mainLayout.addWidget(self.moProgUpRightBox,1,2)
+    
     def redundancyResLeft(self):
 
         # Group Box
@@ -234,9 +271,11 @@ class SprayGUI(QDialog):
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCurveFile)
         self.curve_filenametext=QLabel('(Please add curve file)')
-        self.redres_baseline_runButton=QPushButton("Run Baseline")
-        self.redres_baseline_runButton.setDefault(True)
-        self.redres_baseline_runButton.clicked.connect(self.run_RedundancyResolution_baseline)
+
+        if not self.dualRobot_box.isChecked():
+            self.redres_baseline_runButton=QPushButton("Run Baseline")
+            self.redres_baseline_runButton.setDefault(True)
+            self.redres_baseline_runButton.clicked.connect(self.run_RedundancyResolution_baseline)
 
         self.v_cmd_box = QSpinBox(self.redResLeftBox)
         self.v_cmd_box.setMinimum(100)
@@ -246,8 +285,36 @@ class SprayGUI(QDialog):
         v_cmd_qt=QLabel('Aggressive Velocity')
         v_cmd_qt.setBuddy(self.v_cmd_box)
 
+        ##### transformation param
+        if self.dualRobot_box.isChecked():
+            baseTransformHeadsup=QLabel('Enter base transformation to skip base pose optimization')
+            baseTransformLayout=QHBoxLayout()
+            self.r2_basePx_box=QLineEdit()
+            # self.r2_basePx_box.resize(10,20)
+            r2_basePx_label=QLabel('Px')
+            r2_basePx_label.setBuddy(self.r2_basePx_box)
+            self.r2_basePy_box=QLineEdit()
+            r2_basePy_label=QLabel('Py')
+            r2_basePy_label.setBuddy(self.r2_basePy_box)
+            self.r2_basePz_box=QLineEdit()
+            r2_basePz_label=QLabel('Pz')
+            r2_basePz_label.setBuddy(self.r2_basePz_box)
+            self.r2_baseRz_box=QLineEdit()
+            r2_baseRz_label=QLabel('Rz')
+            r2_baseRz_label.setBuddy(self.r2_baseRz_box)
+            baseTransformLayout.addWidget(r2_basePx_label)
+            baseTransformLayout.addWidget(self.r2_basePx_box)
+            baseTransformLayout.addWidget(r2_basePy_label)
+            baseTransformLayout.addWidget(self.r2_basePy_box)
+            baseTransformLayout.addWidget(r2_basePz_label)
+            baseTransformLayout.addWidget(self.r2_basePz_box)
+            baseTransformLayout.addWidget(r2_baseRz_label)
+            baseTransformLayout.addWidget(self.r2_baseRz_box)
+        ##########################
+
         self.redres_diffevo_runButton=QPushButton("Run DiffEvo (>1day, needs to run baseline first)")
         self.redres_diffevo_runButton.setDefault(True)
+
         self.redres_diffevo_runButton.clicked.connect(self.run_RedundancyResolution_diffevo)
 
         self.run1_result=QLabel('')
@@ -256,9 +323,15 @@ class SprayGUI(QDialog):
         layout = QVBoxLayout()
         layout.addWidget(filebutton)
         layout.addWidget(self.curve_filenametext)
-        layout.addWidget(self.redres_baseline_runButton)
+
+        if not self.dualRobot_box.isChecked():
+            layout.addWidget(self.redres_baseline_runButton)
         layout.addWidget(v_cmd_qt)
         layout.addWidget(self.v_cmd_box)
+
+        if self.dualRobot_box.isChecked():
+            layout.addLayout(baseTransformLayout)
+
         layout.addWidget(self.redres_diffevo_runButton)
         layout.addWidget(self.run1_result)
         layout.addStretch(1)
@@ -341,10 +414,25 @@ class SprayGUI(QDialog):
         # qthread for redundancy resolution
         self.redres_thread=QThread()
         self.redres_timer_thread=QThread()
-        baseline_pose_filename=os.path.dirname(self.curve_filename)+'/'+self.robot1_name+'/baseline/curve_pose.csv'
-        self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,baseline_pose_filename,self.robot1,v_cmd)
         self.redres_timer=Timer()
         
+        if not self.dualRobot_box.isChecked():
+            baseline_pose_filename=os.path.dirname(self.curve_filename)+'/'+self.robot1_name+'/baseline/curve_pose.csv'
+            self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,baseline_pose_filename,self.robot1,v_cmd)
+        else:
+            if self.robot2_name is None:
+                self.run2_result.setText("Robot2 not yet choosed.")
+                return
+            if self.curvejs2_filename is None:
+                self.run2_result.setText("Solution folder not chosen or Curve_js2 not exists")
+                return
+            ### set robot2
+            if 'ABB' in self.robot2_name:
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+            elif 'FANUC' in self.robot2_name:
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+            #################################
+            self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,self.robot1,self.robot2,v_cmd)
 
         self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread=\
             setup_worker_timer(self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread,\
@@ -352,9 +440,11 @@ class SprayGUI(QDialog):
 
         ## edit interface
         self.redres_diffevo_runButton.setEnabled(False)
+        self.dualRobot_box.setEnabled(False)
         
         ## final result setup
         self.redres_thread.finished.connect(lambda: self.redres_diffevo_runButton.setEnabled(True))
+        self.redres_thread.finished.connect(lambda: self.dualRobot_box.setEnabled(True))
 
         ## start thread
         self.redres_thread.start()
@@ -397,24 +487,26 @@ class SprayGUI(QDialog):
             self.run1_result.setText('Redundancy Resolution failed because of errors. Time:',time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             return
 
-        curve_base,curve_normal_base,curve_js,H,run_duration=result
-
-        save_filepath=self.curve_pathname+'/'+self.robot1_name+'/diffevo/'
-        Path(save_filepath).mkdir(exist_ok=True)
-
-        ###save file
-        df=DataFrame({'x':curve_base[:,0],'y':curve_base[:,1], 'z':curve_base[:,2],'x_dir':curve_normal_base[:,0],'y_dir':curve_normal_base[:,1], 'z_dir':curve_normal_base[:,2]})
-        df.to_csv(save_filepath+'Curve_in_base_frame.csv',header=False,index=False)
-        
-        np.savetxt(save_filepath+'curve_pose.csv',H,delimiter=',')
-
-        if len(curve_js) > 0:
-            DataFrame(curve_js).to_csv(save_filepath+'Curve_js.csv',header=False,index=False)
-            self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+        if not self.dualRobot_box.isChecked():
+            curve_base,curve_normal_base,curve_js,H,run_duration=result
+            save_filepath=self.curve_pathname+'/'+self.robot1_name+'/diffevo/'
+            Path(save_filepath).mkdir(exist_ok=True)
+            ###save file
+            df=DataFrame({'x':curve_base[:,0],'y':curve_base[:,1], 'z':curve_base[:,2],'x_dir':curve_normal_base[:,0],'y_dir':curve_normal_base[:,1], 'z_dir':curve_normal_base[:,2]})
+            df.to_csv(save_filepath+'Curve_in_base_frame.csv',header=False,index=False)
+            np.savetxt(save_filepath+'curve_pose.csv',H,delimiter=',')
+            if len(curve_js) > 0:
+                DataFrame(curve_js).to_csv(save_filepath+'Curve_js.csv',header=False,index=False)
+                self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            else:
+                self.run1_result.setText('Redundancy Resolution. No JS Solution. \nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
         else:
-            self.run1_result.setText('Redundancy Resolution. No JS Solution. \nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
-
-
+            robot2_base,curve_js1,curve_js2,run_duration=result
+            save_filepath=self.curve_pathname+'/'+self.robot1_name+'_'+self.robot2_name+'/diffevo/'
+            Path(save_filepath).mkdir(exist_ok=True)
+            DataFrame(curve_js1).to_csv(save_filepath+'Curve_js1.csv',header=False,index=False)
+            DataFrame(curve_js2).to_csv(save_filepath+'Curve_js2.csv',header=False,index=False)
+            np.savetxt(save_filepath+'base.csv',H,delimiter=',')
 
     def motionProgGenMid(self):
 
@@ -422,10 +514,14 @@ class SprayGUI(QDialog):
         self.moProgGenMidBox=QGroupBox('Motion Program Generation')
 
         # add button
-        filebutton=QPushButton('Open Curve Js File')
+        # filebutton=QPushButton('Open Curve Js File')
+        #### open solution file
+        filebutton=QPushButton('Open Solution Directory')
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCurveJsFile)
-        self.curvejs_filenametext=QLabel('(Please add curve joint space file)')
+        self.curvejs_solutionDirtext=QLabel('(Please select solution directory)')
+        ########################
+
         self.total_seg_box = QSpinBox(self.moProgGenMidBox)
         self.total_seg_box.setMinimum(1)
         self.total_seg_box.setMaximum(50000)
@@ -447,13 +543,12 @@ class SprayGUI(QDialog):
         self.moprog_runButton_greedy.setDefault(True)
         self.moprog_runButton_greedy.clicked.connect(self.run_MotionProgGeneration_greedy)
 
-
         self.run2_result=QLabel('')
 
         # add layout
         layout = QVBoxLayout()
         layout.addWidget(filebutton)
-        layout.addWidget(self.curvejs_filenametext)
+        layout.addWidget(self.curvejs_solutionDirtext)
         layout.addWidget(seglabel)
         layout.addWidget(self.total_seg_box)
         layout.addWidget(self.moprog_runButton_baseline)
@@ -465,37 +560,23 @@ class SprayGUI(QDialog):
     
     def readCurveJsFile(self):
         
-        dlg = QFileDialog()
-        dlg.setFileMode(QFileDialog.AnyFile)
-        dlg.setFilter(QDir.Files)
-
-        if dlg.exec_():
-            filenames = dlg.selectedFiles()
-            self.curvejs_filename = filenames[0]
-            self.curvejs_pathname = os.path.dirname(self.curvejs_filename)
-            self.curvejs_filenametext.setText(self.curvejs_filename)
-    
-    def prog_Visualization(self,n):
-        
-        self.run3_result.setText('Running Visualization. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
-
-    def res_Visualization(self,result):
-
-        if len(result) <= 1:
-            run_duration=result[0]
-            self.run3_result.setText('Visualization Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
-            return
-
-        self.run3_result.setText('Visualzation on localhost:8000\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
-
+        try:
+            solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+            self.curvejs_pathname = solution_dir
+            self.curvejs1_filename = solution_dir+'/Curve_js1.csv'
+            if self.dualRobot_box.isChecked():
+                self.curvej2_filename = solution_dir+'/Curve_js2.csv'
+            self.curvejs_solutionDirtext.setText(solution_dir)
+        except Exception as e:
+            print(e)
 
     def run_MotionProgGeneration_baseline(self):
 
         if self.robot1 is None:
             self.run2_result.setText("Robot1 not yet choosed.")
             return
-        if self.curvejs_filename is None:
-            self.run2_result.setText("Curve joint space file not yet choosed.")
+        if self.curvejs1_filename is None:
+            self.run2_result.setText("Solution folder not chosen or Curve_js1 not exists")
             return
 
         self.run2_result.setText('Generating Motion Program')
@@ -505,7 +586,23 @@ class SprayGUI(QDialog):
         self.moprog_thread=QThread()
         self.moprog_timer_thread=QThread()
         self.moprog_timer=Timer()
-        self.moprog_worker=Worker(motion_program_generation_baseline,self.curvejs_filename,self.robot1,total_seg)
+
+        if not self.dualRobot_box.isChecked():
+            self.moprog_worker=Worker(motion_program_generation_baseline,self.curvejs1_filename,self.robot1,total_seg)
+        else:
+            if self.robot2_name is None:
+                self.run2_result.setText("Robot2 not yet choosed.")
+                return
+            if self.curvejs2_filename is None:
+                self.run2_result.setText("Solution folder not chosen or Curve_js2 not exists")
+                return
+            ### set robot2
+            if 'ABB' in self.robot2_name:
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+            elif 'FANUC' in self.robot2_name:
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+            #################################
+            self.moprog_worker=Worker(motion_program_generation_baseline,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,total_seg)
 
         self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread=\
             setup_worker_timer(self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread,\
@@ -514,10 +611,11 @@ class SprayGUI(QDialog):
         ## edit interface
         self.moprog_runButton_baseline.setEnabled(False)
         self.total_seg_box.setEnabled(False)
+        self.dualRobot_box.setEnabled(False)
         ## final result setup
         self.moprog_thread.finished.connect(lambda: self.moprog_runButton_baseline.setEnabled(True))
         self.moprog_thread.finished.connect(lambda: self.total_seg_box.setEnabled(True))
-
+        self.moprog_thread.finished.connect(lambda: self.dualRobot_box.setEnabled(True))
 
         ## start thread
         self.moprog_timer_thread.start()
@@ -528,8 +626,8 @@ class SprayGUI(QDialog):
         if self.robot1 is None:
             self.run2_result.setText("Robot1 not yet choosed.")
             return
-        if self.curvejs_filename is None:
-            self.run2_result.setText("Curve joint space file not yet choosed.")
+        if self.curvejs1_filename is None:
+            self.run2_result.setText("Solution folder not chosen or Curve_js1 not exists")
             return
 
         self.run2_result.setText('Generating Motion Program')
@@ -539,7 +637,23 @@ class SprayGUI(QDialog):
         self.moprog_thread=QThread()
         self.moprog_timer_thread=QThread()
         self.moprog_timer=Timer()
-        self.moprog_worker=Worker(motion_program_generation_greedy,self.curvejs_filename,self.robot1,greedy_thresh)
+
+        if not self.dualRobot_box.isChecked():
+            self.moprog_worker=Worker(motion_program_generation_greedy,self.curvejs1_filename,self.robot1,greedy_thresh)
+        else:
+            if self.robot2_name is None:
+                self.run2_result.setText("Robot2 not yet choosed.")
+                return
+            if self.curvejs2_filename is None:
+                self.run2_result.setText("Solution folder not chosen or Curve_js2 not exists")
+                return
+            ### set robot2
+            if 'ABB' in self.robot2_name:
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+            elif 'FANUC' in self.robot2_name:
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+            #################################
+            self.moprog_worker=Worker(motion_program_generation_greedy,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,greedy_thresh)
 
         self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread=\
             setup_worker_timer(self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread,\
@@ -548,9 +662,11 @@ class SprayGUI(QDialog):
         ## edit interface
         self.moprog_runButton_greedy.setEnabled(False)
         self.greedy_thresh_box.setEnabled(False)
+        self.dualRobot_box.setEnabled(False)
         ## final result setup
         self.moprog_thread.finished.connect(lambda: self.moprog_runButton_greedy.setEnabled(True))
         self.moprog_thread.finished.connect(lambda: self.total_seg_box.setEnabled(True))
+        self.moprog_thread.finished.connect(lambda: self.dualRobot_box.setEnabled(True))
 
         ## start thread
         self.moprog_timer_thread.start()
@@ -567,13 +683,22 @@ class SprayGUI(QDialog):
             self.run2_result.setText('Motion Program Generation Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             return
 
-        breakpoints,primitives,q_bp,p_bp,run_duration=result
-
-        save_filepath=self.curvejs_pathname+'/'+str(int(self.total_seg_box.value()))+'L/'
-        Path(save_filepath).mkdir(exist_ok=True)
-        # save motion program commands
-        df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
-        df.to_csv(save_filepath+'command.csv',header=True,index=False)
+        if not self.dualRobot_box.isChecked():
+            breakpoints,primitives,q_bp,p_bp,run_duration=result
+            save_filepath=self.curvejs_pathname+'/'+str(int(self.total_seg_box.value()))+'L/'
+            Path(save_filepath).mkdir(exist_ok=True)
+            # save motion program commands
+            df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
+            df.to_csv(save_filepath+'command.csv',header=True,index=False)
+        else:
+            breakpoints1,primitives1,q_bp1,p_bp1,breakpoints2,primitives2,q_bp2,p_bp2,run_duration=result
+            save_filepath=self.curvejs_pathname+'/'+str(int(self.total_seg_box.value()))+'L_dual/'
+            Path(save_filepath).mkdir(exist_ok=True)
+            # save motion program commands
+            df=DataFrame({'breakpoints':breakpoints1,'primitives':primitives1,'p_bp':p_bp1,'q_bp':q_bp1})
+            df.to_csv(save_filepath+'command1.csv',header=True,index=False)
+            df=DataFrame({'breakpoints':breakpoints2,'primitives':primitives2,'p_bp':p_bp2,'q_bp':q_bp2})
+            df.to_csv(save_filepath+'command2.csv',header=True,index=False)
 
         self.run2_result.setText('Motion Program Generated\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
 
@@ -584,15 +709,38 @@ class SprayGUI(QDialog):
             self.run2_result.setText('Motion Program Generation Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             return
 
-        breakpoints,primitives,q_bp,p_bp,run_duration=result
-
-        save_filepath=self.curvejs_pathname+'/greedy'+str(self.greedy_thresh_box.value())+'/'
-        Path(save_filepath).mkdir(exist_ok=True)
-        # save motion program commands
-        df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
-        df.to_csv(save_filepath+'command.csv',header=True,index=False)
+        if not self.dualRobot_box.isChecked():
+            breakpoints,primitives,q_bp,p_bp,run_duration=result
+            save_filepath=self.curvejs_pathname+'/greedy'+str(self.greedy_thresh_box.value())+'/'
+            Path(save_filepath).mkdir(exist_ok=True)
+            # save motion program commands
+            df=DataFrame({'breakpoints':breakpoints,'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
+            df.to_csv(save_filepath+'command.csv',header=True,index=False)
+        else:
+            breakpoints1,primitives1,q_bp1,p_bp1,breakpoints2,primitives2,q_bp2,p_bp2,run_duration=result
+            save_filepath=self.curvejs_pathname+'/greedy'+str(int(self.greedy_thresh_box.value()))+'_dual/'
+            Path(save_filepath).mkdir(exist_ok=True)
+            # save motion program commands
+            df=DataFrame({'breakpoints':breakpoints1,'primitives':primitives1,'p_bp':p_bp1,'q_bp':q_bp1})
+            df.to_csv(save_filepath+'command1.csv',header=True,index=False)
+            df=DataFrame({'breakpoints':breakpoints2,'primitives':primitives2,'p_bp':p_bp2,'q_bp':q_bp2})
+            df.to_csv(save_filepath+'command2.csv',header=True,index=False)
 
         self.run2_result.setText('Motion Program Generated\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+
+    def prog_Visualization(self,n):
+        
+        self.run3_result.setText('Running Visualization. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
+
+    def res_Visualization(self,result):
+
+        if len(result) <= 1:
+            run_duration=result[0]
+            self.run3_result.setText('Visualization Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+            return
+
+        self.run3_result.setText('Visualzation on localhost:8000\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+
 
     def read_Solution(self):
 
@@ -624,16 +772,6 @@ class SprayGUI(QDialog):
         solution_button.setDefault(True)
         solution_button.clicked.connect(self.read_Solution)
         self.solutionDirtext=QLabel('(Please select solution directory)')
-
-        # descurvebutton=QPushButton('Open Desired Curve File')
-        # descurvebutton.setDefault(True)
-        # descurvebutton.clicked.connect(self.readDesiredCurveFile)
-        # self.des_curve_filenametext=QLabel('(Please add desired curve file)')
-
-        # descurvejsbutton=QPushButton('Open Desired Curve js File')
-        # descurvejsbutton.setDefault(True)
-        # descurvejsbutton.clicked.connect(self.readDesiredCurveJsFile)
-        # self.des_curvejs_filenametext=QLabel('(Please add desired curve js file)')
 
         filebutton=QPushButton('Open Command File')
         filebutton.setDefault(True)
