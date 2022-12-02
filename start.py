@@ -346,7 +346,7 @@ class SprayGUI(QDialog):
             baseTransLayout.addWidget(r2_baseRz_label)
             baseTransLayout.addWidget(self.r2_baseRz_box)
 
-            qinit2Headsup=QLabel('Enter Robot2 Joint Initial')
+            qinit2Headsup=QLabel('Enter Robot2 Joint Initial (degree)')
             qinit2Layout=QHBoxLayout()
             self.r2init_boxes=[]
             r2init_labels=[]
@@ -498,7 +498,7 @@ class SprayGUI(QDialog):
             q_init2=[]
             for j in range(6):
                 q_init2.append(float(self.r2init_boxes[j].text()))
-            q_init2=np.array(q_init2)
+            q_init2=np.radians(q_init2)
             self.redres_worker=Worker(redundancy_resolution_diffevo_dual,self.curve_filename,base_T,self.robot1,self.robot2,q_init2,int(v_cmd),self.opt_base_box.isChecked())
 
         self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread=\

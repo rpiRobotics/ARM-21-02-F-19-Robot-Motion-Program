@@ -93,6 +93,7 @@ def redundancy_resolution_diffevo_dual(filename, base_T, robot1, robot2, q_init2
     base2_R=base_T[:3,:3]
     base2_p=base_T[:-1,-1]
     base2_k,base2_theta=R2rot(base2_R)
+    robot2.base_H=H_from_RT(base2_R,base2_p)
 
     opt=lambda_opt(relative_path[:,:3],relative_path[:,3:],robot1=robot1,robot2=robot2,steps=500,v_cmd=v_cmd)
 
@@ -126,7 +127,7 @@ def redundancy_resolution_diffevo_dual(filename, base_T, robot1, robot2, q_init2
         lower_limit=np.hstack((robot2.lower_limit,[-np.pi]))
         upper_limit=np.hstack((robot2.upper_limit,[np.pi]))
         bnds=tuple(zip(lower_limit,upper_limit))
-        res = differential_evolution(opt.dual_arm_opt_w_pose_3dof, bnds, args=None,workers=-1,
+        res = differential_evolution(opt.dual_arm_opt_w_q2init, bnds, args=None,workers=-1,
                                         x0 = np.hstack((q_init2_init,[0])),
                                         strategy='best1bin', maxiter=700,
                                         popsize=15, tol=1e-10,
