@@ -35,11 +35,11 @@ def calc_lam_js(curve_js,robot):
 			lam.append(lam[-1]+np.linalg.norm(curve[i]-curve[i-1]))
 	return np.array(lam)
 
-def calc_lam_js_2arm(curve_js1,curve_js2,robot1,robot2,base2_R,base2_p):
+def calc_lam_js_2arm(curve_js1,curve_js2,robot1,robot2):
 	curve=[]
 	for i in range(len(curve_js1)):
 		pose1_now=robot1.fwd(curve_js1[i])
-		pose2_world_now=robot2.fwd(curve_js2[i],base2_R,base2_p)
+		pose2_world_now=robot2.fwd(curve_js2[i],world=True)
 
 		curve.append(pose2_world_now.R.T@(pose1_now.p-pose2_world_now.p))
 	# visualize_curve(np.array(curve))
@@ -391,7 +391,7 @@ def traj_speed_est(robot,curve_js,lam,vd,qdot_init=[]):
 	speed=moving_average(speed,n=5,padding=True)
 	return speed
 
-def traj_speed_est_dual(robot1,robot2,curve_js1,curve_js2,base2_R,base2_p,lam,vd,qdot_init1=[],qdot_init2=[]):
+def traj_speed_est_dual(robot1,robot2,curve_js1,curve_js2,lam,vd,qdot_init1=[],qdot_init2=[]):
 	#############################TCP relative speed esitmation with dual arm##############################
 	###lam & vd must both be 1. relative or 2. robot2's TCP
 	joint_acc_limit1=robot1.get_acc(curve_js1)
@@ -433,7 +433,7 @@ def traj_speed_est_dual(robot1,robot2,curve_js1,curve_js2,base2_R,base2_p,lam,vd
 	for i in range(0,len(curve_js1)):
 		pose1_now=robot1.fwd(curve_js1[i])
 		pose2_now=robot2.fwd(curve_js2[i])
-		pose2_world_now=robot2.fwd(curve_js2[i],base2_R,base2_p)
+		pose2_world_now=robot2.fwd(curve_js2[i],world=True)
 
 		J1=robot1.jacobian(curve_js1[i])
 		J2=robot2.jacobian(curve_js2[i])
@@ -507,7 +507,7 @@ def traj_speed_est_dual(robot1,robot2,curve_js1,curve_js2,base2_R,base2_p,lam,vd
 					####update speed
 					pose1_now=robot1.fwd(curve_js1[i])
 					pose2_now=robot2.fwd(curve_js2[i])
-					pose2_world_now=robot2.fwd(curve_js2[i],base2_R,base2_p)
+					pose2_world_now=robot2.fwd(curve_js2[i],world=True)
 
 					J1=robot1.jacobian(curve_js1[i])
 					J2=robot2.jacobian(curve_js2[i])
@@ -554,7 +554,7 @@ def traj_speed_est_dual(robot1,robot2,curve_js1,curve_js2,base2_R,base2_p,lam,vd
 					####update speed
 					pose1_now=robot1.fwd(curve_js1[i])
 					pose2_now=robot2.fwd(curve_js2[i])
-					pose2_world_now=robot2.fwd(curve_js2[i],base2_R,base2_p)
+					pose2_world_now=robot2.fwd(curve_js2[i],world=True)
 
 					J1=robot1.jacobian(curve_js1[i])
 					J2=robot2.jacobian(curve_js2[i])
@@ -635,7 +635,7 @@ def main2():
 	base2_R=H_6640[:-1,:-1]
 	base2_p=1000.*H_6640[:-1,-1]
 	
-	lam=calc_lam_js_2arm(curve_js1,curve_js2,robot1,robot2,base2_R,base2_p)
+	lam=calc_lam_js_2arm(curve_js1,curve_js2,robot1,robot2)
 	step=10
 	lam_dot=calc_lamdot_2arm(np.hstack((curve_js1,curve_js2)),lam,robot1,robot2,step)
 	plt.plot(lam[::step],lam_dot)

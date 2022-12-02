@@ -14,9 +14,26 @@ def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_cu
 
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot.def_path:
-            return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=True)
+            return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=realrobot)
         if 'FANUC' in robot.def_path:
-            return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
+            return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot)
+    except:
+        traceback.print_exc()
+
+def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs1_filename,desired_curvejs2_filename,\
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,utool2):
+
+    try:
+        curve = read_csv(desired_curve_filename,header=None).values
+        curve=np.array(curve)
+        curve_js1 = np.array(read_csv(desired_curvejs1_filename,header=None).values)
+        curve_js2 = np.array(read_csv(desired_curvejs2_filename,header=None).values)
+
+        # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
+        if 'ABB' in robot1.def_path:
+            return
+        if 'FANUC' in robot1.def_path:
+            return error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
     except:
         traceback.print_exc()
 
@@ -181,7 +198,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
 
 
 def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False):
 
     curve=desired_curve
     curve_js=desired_curve_js
@@ -215,13 +232,14 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
     max_error_prev = 999999999
     for i in range(iteration_max):
         
-        ###execute,curve_fit_js only used for orientation
-        logged_data=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z)
-
-        # print(logged_data)
-        df = read_csv(StringIO(logged_data.decode('utf-8')))
-        ##############################data analysis#####################################
-        lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.logged_data_analysis(robot,df)
+        if realrobot:
+            lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=average_N_exe_fanuc(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=5)
+        else:
+            ###execute,curve_fit_js only used for orientation
+            logged_data=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z)
+            df = read_csv(StringIO(logged_data.decode('utf-8')))
+            ##############################data analysis#####################################
+            lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.logged_data_analysis(robot,df)
 
         #############################chop extension off##################################
         lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.chop_extension(curve_exe, curve_exe_R,curve_exe_js, speed, timestamp,curve[:,:3],curve[:,3:])
@@ -338,8 +356,8 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
     
     return curve_exe_js,speed,error,np.rad2deg(angle_error),breakpoints,primitives,q_bp,p_bp
 
-def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,utool2=2):
+def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js1,desired_curve_js2,\
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False,utool2=2):
 
     ## desired curve
     relative_path=desired_curve
@@ -352,15 +370,14 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
     base2_p=base2_T[:3,-1]
 
     # fanuc motion send tool
-    ms = robotMotionSend(robot1=robot1,robot2=robot2,utool2=utool2)
-
-    p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(ms.robot1,p_bp1,q_bp1,primitives1,ms.robot2,p_bp2,q_bp2,primitives2,breakpoints1,0,extension_start=extstart,extension_end=extend)  ## curve_1, greedy 0.2
+    ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
     
     s=velocity # mm/sec in leader frame
     z=100 # CNT100
 
     breakpoints1,primitives1,p_bp1,q_bp1,_=ms.extract_data_from_cmd(filepath+'/command1.csv')
     breakpoints2,primitives2,p_bp2,q_bp2,_=ms.extract_data_from_cmd(filepath+'/command2.csv')
+    p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(ms.robot1,p_bp1,q_bp1,primitives1,ms.robot2,p_bp2,q_bp2,primitives2,breakpoints1,0,extension_start=extstart,extension_end=extend)  ## curve_1, greedy 0.2
 
     ilc=ilc_toolbox([robot1,robot2],[primitives1,primitives2])
 
@@ -376,14 +393,17 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
     use_grad=False
     for i in range(iteration_max):
 
-        ###execution with plant
-        logged_data=ms.exec_motions_multimove(robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,s,z)
-        # with open('iteration_'+str(i)+'.csv',"wb") as f:
-        #     f.write(logged_data)
-        StringData=StringIO(logged_data.decode('utf-8'))
-        df = read_csv(StringData, sep =",")
-        ##############################data analysis#####################################
-        lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe, relative_path_exe_R = ms.logged_data_analysis_multimove(df,base2_R,base2_p,realrobot=False)
+        if realrobot:
+            lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe, relative_path_exe_R = \
+                average_N_exe_multimove_fanuc(ms,robot1,robot2,base2_R,base2_p,primitives1,primitives2,breakpoints1,p_bp1,p_bp2,q_bp1,q_bp2,s,z,log_path='',N=5)
+        else:
+            ###execution with plant
+            logged_data=ms.exec_motions_multimove(robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,s,z)
+            StringData=StringIO(logged_data.decode('utf-8'))
+            df = read_csv(StringData, sep =",")
+            ##############################data analysis#####################################
+            lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe, relative_path_exe_R = ms.logged_data_analysis_multimove(df,base2_R,base2_p,realrobot=False)
+        
         #############################chop extension off##################################
         lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe, relative_path_exe_R=\
             ms.chop_extension_dual(lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe,relative_path_exe_R,relative_path[0,:3],relative_path[-1,:3])
@@ -536,3 +556,5 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
                         # error_localmin_flag=True
                         use_grad=True
                         break
+    
+    return curve_exe_js1,curve_exe_js2,speed,error,np.rad2deg(angle_error),breakpoints1,primitives1,q_bp1,p_bp1,primitives2,q_bp2,p_bp2

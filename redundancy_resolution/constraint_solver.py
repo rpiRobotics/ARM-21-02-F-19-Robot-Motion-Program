@@ -29,7 +29,8 @@ class lambda_opt(object):
 
 		self.steps=steps
 
-		self.lim_factor=0.0000001###avoid fwd error on joint limit
+		# self.lim_factor=0.0000001###avoid fwd error on joint limit
+		self.lim_factor=np.deg2rad(1) ###avoid fwd error on joint limit
 
 		#prespecified primitives
 		self.primitives=primitives
@@ -644,18 +645,21 @@ class lambda_opt(object):
 		R=np.dot(R_temp,Rz(x[-1]))
 		try:
 			q_init1=self.robot1.inv(pose2_world_now.R@self.curve[0]+pose2_world_now.p,R)[0]
-			q_out1,q_out2,j_out1,j_out2=self.dual_arm_stepwise_optimize(q_init1,q_init2,w1=0.01,w2=0.01)
+			q_out1,q_out2,j_out1,j_out2=self.dual_arm_stepwise_optimize(q_init1,q_init2,w1=0.01,w2=0.02)
 		except:
-			# traceback.print_exc()
+			traceback.print_exc()
+			# print("this one")
 			return 999
 
 		joint_margin=0.01
 		
 		###make sure extension possible by checking start & end configuration
 		if np.min(self.robot1.upper_limit-q_out1[0])<joint_margin or  np.min(q_out1[0]-self.robot1.lower_limit)<joint_margin or np.min(self.robot1.upper_limit-q_out1[-1])<joint_margin or np.min(q_out1[-1]-self.robot1.lower_limit)<joint_margin:
+			# print("joint con 1")
 			return 999
 		###make sure extension possible by checking start & end configuration
 		if np.min(self.robot2.upper_limit-q_out2[0])<joint_margin or  np.min(q_out2[0]-self.robot2.lower_limit)<joint_margin or np.min(self.robot2.upper_limit-q_out2[-1])<joint_margin or  np.min(q_out2[-1]-self.robot2.lower_limit)<joint_margin:
+			# print("joint con 2")
 			return 999
 		
 		jacobian_margin=0.1
@@ -678,7 +682,7 @@ class lambda_opt(object):
 				return 999
 		_,sv,_=np.linalg.svd(j_out2[-1])
 		if np.min(sv)<jacobian_margin:
-			# print("min svd of J1 too small")
+			# print("min svd of J2 too small")
 			return 999
 
 		speed,_,_=traj_speed_est_dual(self.robot1,self.robot2,q_out1,q_out2,self.lam,self.v_cmd)

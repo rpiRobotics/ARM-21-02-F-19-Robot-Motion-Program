@@ -75,6 +75,56 @@ def average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,v,z,curve,log_path='
 
 	return curve_js_all_new, avg_curve_js, timestamp_d
 
+def average_N_exe_fanuc(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path='',N=5):
+
+	curve_exe_js_all={}
+
+	for r in range(N):
+		###execute,curve_fit_js only used for orientation
+		logged_data=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,s,z)
+		df = read_csv(StringIO(logged_data.decode('utf-8')))
+		##############################data analysis#####################################
+		lam, curve_exe, curve_exe_R,curve_exe_js, speed, timestamp=ms.logged_data_analysis(robot,df)
+
+		for i in range(len(timestamp)):
+			stamp=timestamp[i]
+			if stamp not in curve_exe_js_all.keys():
+				curve_exe_js_all[stamp]=[]
+			## add curve js to dictionary
+			curve_exe_js_all[stamp].append(curve_exe_js[i])
+	
+	timestamp_out = curve_exe_js_all.keys()
+	timestamp_out=np.sort(timestamp_out)
+	curve_exe_js_out=[]
+	for stamp in timestamp_out:
+		this_stamp_js_all=curve_exe_js_all[stamp]
+		this_stamp_js=np.mean(this_stamp_js_all,axis=0)
+		curve_exe_js_out.append(this_stamp_js)
+	
+	act_speed=[0]
+	lam_exec=[0]
+	curve_exe=[]
+	curve_exe_R=[]
+	for i in range(len(curve_exe_js_out)):
+		this_q = curve_exe_js_out[i]
+		robot_pose=robot.fwd(this_q)
+		curve_exe.append(robot_pose.p)
+		curve_exe_R.append(robot_pose.R)
+		if i>0:
+			lam_exec.append(lam_exec[-1]+np.linalg.norm(curve_exe[-1]-curve_exe[-2]))
+			try:
+				timestep=timestamp_out[i]-timestamp_out[i-1]
+				act_speed.append(np.linalg.norm(curve_exe[-1]-curve_exe[-2])/timestep)
+			except IndexError:
+				pass
+	curve_exe_js_out=np.array(curve_exe_js_out)
+	act_speed=np.array(act_speed)
+	lam_exec=np.array(lam_exec)
+	curve_exe=np.array(curve_exe)
+	curve_exe_R=np.array(curve_exe_R)
+
+	return lam_exec, curve_exe, curve_exe_R,curve_exe_js_out, act_speed, timestamp_out
+
 def average_N_exe_multimove(ms,breakpoints,robot1,primitives1,p_bp1,q_bp1,v1_all,z1_all,robot2,primitives2,p_bp2,q_bp2,v2_all,z2_all,relative_path,safeq1=None,safeq2=None,log_path='',N=5):
 	###N run execute
 	curve_exe_js_all=[]
@@ -114,6 +164,67 @@ def average_N_exe_multimove(ms,breakpoints,robot1,primitives1,p_bp1,q_bp1,v1_all
 
 	return curve_js_all_new, avg_curve_js, timestamp_d
 
+def average_N_exe_multimove_fanuc(ms,robot1,robot2,base2_R,base2_p,primitives1,primitives2,breakpoints,p_bp1,p_bp2,q_bp1,q_bp2,s,z,log_path='',N=5):
+
+	curve_exe_js1_all={}
+	curve_exe_js2_all={}
+
+	for r in range(N):
+		###execution with plant
+		logged_data=ms.exec_motions_multimove(robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,s,z)
+		StringData=StringIO(logged_data.decode('utf-8'))
+		df = read_csv(StringData, sep =",")
+		##############################data analysis#####################################
+		_, _,_,_,_,curve_exe_js1,curve_exe_js2, _, timestamp, _, _ = ms.logged_data_analysis_multimove(df,base2_R,base2_p,realrobot=False)
+        
+		for i in range(len(timestamp)):
+			stamp=timestamp[i]
+			if stamp not in curve_exe_js1_all.keys():
+				curve_exe_js1_all[stamp]=[]
+			if stamp not in curve_exe_js2_all.keys():
+				curve_exe_js2_all[stamp]=[]
+			## add curve js to dictionary
+			curve_exe_js1_all[stamp].append(curve_exe_js1[i])
+			curve_exe_js2_all[stamp].append(curve_exe_js2[i])
+	
+	timestamp_out = curve_exe_js1.keys()
+	timestamp_out=np.sort(timestamp_out)
+	curve_exe_js1_out=[]
+	curve_exe_js2_out=[]
+	for stamp in timestamp_out:
+		curve_exe_js1_out.append(np.mean(curve_exe_js1_all[stamp],axis=0))
+		curve_exe_js2_out.append(np.mean(curve_exe_js2_all[stamp],axis=0))
+	
+	act_speed=[0]
+	lam=[0]
+	relative_path_exe=[]
+	relative_path_exe_R=[]
+	curve_exe1=[]
+	curve_exe2=[]
+	curve_exe_R1=[]
+	curve_exe_R2=[]
+	for i in range(len(curve_exe_js1_out)):
+		pose1_now=robot1.fwd(curve_exe_js1_out[i])
+		pose2_now=robot2.fwd(curve_exe_js2_out[i])
+		# curve in robot's own frame
+		curve_exe1.append(pose1_now.p)
+		curve_exe2.append(pose2_now.p)
+		curve_exe_R1.append(pose1_now.R)
+		curve_exe_R2.append(pose2_now.R)
+
+		pose2_world_now=robot2.fwd(curve_exe_js2_out[i],world=True)
+		relative_path_exe.append(np.dot(pose2_world_now.R.T,pose1_now.p-pose2_world_now.p))
+		relative_path_exe_R.append(pose2_world_now.R.T@pose1_now.R)
+		
+		if i>0:
+			lam.append(lam[-1]+np.linalg.norm(relative_path_exe[-1]-relative_path_exe[-2]))
+			try:
+				timestep=timestamp_out[i]-timestamp_out[i-1]
+				act_speed.append(np.linalg.norm(relative_path_exe[-1]-relative_path_exe[-2])/timestep)
+			except IndexError:
+				pass
+
+	return lam,curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1_out,curve_exe_js2_out,act_speed,timestamp_out,relative_path_exe,relative_path_exe_R
 
 def average_5_egm_car_exe(et,curve_cmd,curve_cmd_R):
 	###5 run execute egm Cartesian
