@@ -29,7 +29,8 @@ class lambda_opt(object):
 
 		self.steps=steps
 
-		self.lim_factor=0.0000001###avoid fwd error on joint limit
+		# self.lim_factor=0.0000001###avoid fwd error on joint limit
+		self.lim_factor=np.deg2rad(1) ###avoid fwd error on joint limit
 
 		#prespecified primitives
 		self.primitives=primitives
@@ -261,10 +262,8 @@ class lambda_opt(object):
 			if np.linalg.norm(curve_js[-1])>0:
 				break
 		return curve_js
-	def dual_arm_stepwise_optimize(self,q_init1,q_init2,w1=0.01,w2=0.01,base2_R=None,base2_p=None):
-		if base2_R is None:
-			base2_R=self.base2_R
-			base2_p=self.base2_p
+	def dual_arm_stepwise_optimize(self,q_init1,q_init2,w1=0.01,w2=0.01):
+		
 		###w1: weight for first robot
 		###w2: weight for second robot (larger weight path shorter)
 		#curve_normal: expressed in second robot tool frame
@@ -273,9 +272,14 @@ class lambda_opt(object):
 		q_out1=[q_init1]
 		q_all2=[q_init2]
 		q_out2=[q_init2]
+		j_all1=[self.robot1.jacobian(q_all1[-1])]
+		j_all2=[self.robot2.jacobian(q_all2[-1])]
+		j_out1=[j_all1[0]]
+		j_out2=[j_all1[0]]
 
 		#####weights
 		Kw=0.1
+
 		Kq=w1*np.eye(12)    #small value to make sure positive definite
 		Kq[6:,6:]=w2*np.eye(6)		#larger weights for second robot for it moves slower
 		KR=np.eye(3)        #gains for position and orientation error
@@ -287,6 +291,8 @@ class lambda_opt(object):
 		joint_acc_limit=np.hstack((self.robot1.joint_acc_limit,self.robot2.joint_acc_limit))
 
 		for i in range(len(self.curve)):
+			# if (i%1000) == 0:
+			# 	print(i)
 			try:
 				now=time.time()
 				error_fb=999
@@ -296,25 +302,30 @@ class lambda_opt(object):
 						print('qp timeout')
 						raise AssertionError
 						break
-
 					pose1_now=self.robot1.fwd(q_all1[-1])
 					pose2_now=self.robot2.fwd(q_all2[-1])
 
-					pose2_world_now=self.robot2.fwd(q_all2[-1],base2_R,base2_p)
+					# self.robot2.base_H=H_from_RT(base2_R,base2_p)
+					pose2_world_now=self.robot2.fwd(q_all2[-1],world=True)
 
 					error_fb=np.linalg.norm(np.dot(pose2_world_now.R.T,pose1_now.p-pose2_world_now.p)-self.curve[i])+np.linalg.norm(np.dot(pose2_world_now.R.T,pose1_now.R[:,-1])-self.curve_normal[i])	
 
+					if error_fb>1000:
+						print("error_fb:",error_fb)
+						raise AssertionError
+
+					# print(error_fb)
 					# print(i)
 					# print(np.dot(pose2_world_now.R.T,pose1_now.p-pose2_world_now.p)-self.curve[i])
 					# print(np.dot(pose2_world_now.R.T,pose1_now.R[:,-1])-self.curve_normal[i])
 					########################################################QP formation###########################################
 					
-					J1=self.robot1.jacobian(q_all1[-1])        #calculate current Jacobian
+					J1=j_all1[-1]        #current Jacobian
 					J1p=np.dot(pose2_world_now.R.T,J1[3:,:])
 					J1R=np.dot(pose2_world_now.R.T,J1[:3,:])
 					J1R_mod=-np.dot(hat(np.dot(pose2_world_now.R.T,pose1_now.R[:,-1])),J1R)
 
-					J2=self.robot2.jacobian(q_all2[-1])        #calculate current Jacobian, mapped to robot2 tool frame
+					J2=j_all2[-1]        #current Jacobian        #calculate current Jacobian, mapped to robot2 tool frame
 					J2p=np.dot(pose2_now.R.T,J2[3:,:])
 					J2R=np.dot(pose2_now.R.T,J2[:3,:])
 					J2R_mod=-np.dot(hat(np.dot(pose2_world_now.R.T,pose1_now.R[:,-1])),J2R)
@@ -332,27 +343,36 @@ class lambda_opt(object):
 					ezdotd=self.curve_normal[i]-np.dot(pose2_world_now.R.T,pose1_now.R[:,-1])
 
 					f=-np.dot(np.transpose(J_all_p),vd)-Kw*np.dot(np.transpose(J_all_R),ezdotd)
-					qdot=solve_qp(H,f,lb=lower_limit-np.hstack((q_all1[-1],q_all2[-1]))+self.lim_factor*np.ones(12),ub=upper_limit-np.hstack((q_all1[-1],q_all2[-1]))-self.lim_factor*np.ones(12))
+					qdot=solve_qp(H,f,lb=lower_limit-np.hstack((q_all1[-1],q_all2[-1]))+self.lim_factor*np.ones(12),ub=upper_limit-np.hstack((q_all1[-1],q_all2[-1]))-self.lim_factor*np.ones(12),solver='quadprog')
 
+					# print(qdot)
 					# alpha=fminbound(self.error_calc4,0,0.999999999999999999999,args=(q_all1[-1],q_all2[-1],qdot,self.curve[i],self.curve_normal[i],))
 					# print(alpha)
 					alpha=1
 					q_all1.append(q_all1[-1]+alpha*qdot[:6])
 					q_all2.append(q_all2[-1]+alpha*qdot[6:])
+					j_all1.append(self.robot1.jacobian(q_all1[-1]))
+					j_all2.append(self.robot2.jacobian(q_all2[-1]))
 
 			except:
 				traceback.print_exc()
 				q_out1.append(q_all1[-1])
-				q_out2.append(q_all2[-1])			
+				q_out2.append(q_all2[-1])
+				j_out1.append(j_all1[-1])
+				j_out2.append(j_all2[-1])		
 				raise AssertionError
 				break
 
 			q_out1.append(q_all1[-1])
 			q_out2.append(q_all2[-1])
+			j_out1.append(j_all1[-1])
+			j_out2.append(j_all2[-1])
 
 		q_out1=np.array(q_out1)[1:]
 		q_out2=np.array(q_out2)[1:]
-		return q_out1, q_out2
+		j_out1=j_out1[1:]
+		j_out2=j_out2[1:]
+		return q_out1, q_out2, j_out1, j_out2
 
 	def dual_arm_stepwise_optimize_separate(self,q_init1,q_init2):
 		#QP motion solver for robot1 fixed position, robot2 fixed orientation
@@ -614,33 +634,110 @@ class lambda_opt(object):
 	def dual_arm_opt_w_pose_3dof(self,x):
 		##x:q_init2,base2_x,base2_y,base2_theta,theta_0
 		q_init2=x[:6]
-		base2_p=[x[6],x[7],790.5]		###fixed z height
+		base2_p=[x[6],x[7],self.robot2.base_H[2,3]]		###fixed z height
 		base2_theta=x[8]
 		base2_R=Rz(base2_theta)
 
-		pose2_world_now=self.robot2.fwd(q_init2,base2_R,base2_p)
+		self.robot2.base_H=H_from_RT(base2_R,base2_p)
+		pose2_world_now=self.robot2.fwd(q_init2,world=True)
 
-
-		R_temp=direction2R(pose2_world_now.R@self.curve_normal[0],-self.curve[1]+self.curve[0])
+		R_temp=direction2R(pose2_world_now.R@(self.curve_normal[0]),pose2_world_now.R@(-self.curve[1]+self.curve[0]))
 		R=np.dot(R_temp,Rz(x[-1]))
 		try:
-			q_init1=self.robot1.inv(pose2_world_now.p,R)[0]
-			q_out1,q_out2=self.dual_arm_stepwise_optimize(q_init1,q_init2,w1=0.02,w2=0.01,base2_R=base2_R,base2_p=base2_p)
+			q_init1=self.robot1.inv(pose2_world_now.R@self.curve[0]+pose2_world_now.p,R)[0]
+			q_out1,q_out2,j_out1,j_out2=self.dual_arm_stepwise_optimize(q_init1,q_init2,w1=0.01,w2=0.02)
+		except:
+			traceback.print_exc()
+			# print("this one")
+			return 999
+
+		joint_margin=0.01
+		
+		###make sure extension possible by checking start & end configuration
+		if np.min(self.robot1.upper_limit-q_out1[0])<joint_margin or  np.min(q_out1[0]-self.robot1.lower_limit)<joint_margin or np.min(self.robot1.upper_limit-q_out1[-1])<joint_margin or np.min(q_out1[-1]-self.robot1.lower_limit)<joint_margin:
+			# print("joint con 1")
+			return 999
+		###make sure extension possible by checking start & end configuration
+		if np.min(self.robot2.upper_limit-q_out2[0])<joint_margin or  np.min(q_out2[0]-self.robot2.lower_limit)<joint_margin or np.min(self.robot2.upper_limit-q_out2[-1])<joint_margin or  np.min(q_out2[-1]-self.robot2.lower_limit)<joint_margin:
+			# print("joint con 2")
+			return 999
+		
+		jacobian_margin=0.1
+		jac_check_count=int(len(j_out1)/100)
+		### J1
+		for J in j_out1[::jac_check_count]:
+			_,sv,_=np.linalg.svd(J)
+			if np.min(sv)<jacobian_margin:
+				# print("min svd of J1 too small")
+				return 999
+		_,sv,_=np.linalg.svd(j_out1[-1])
+		if np.min(sv)<jacobian_margin:
+			# print("min svd of J1 too small")
+			return 999
+		### J2
+		for J in j_out2[::jac_check_count]:
+			_,sv,_=np.linalg.svd(J)
+			if np.min(sv)<jacobian_margin:
+				# print("min svd of J2 too small")
+				return 999
+		_,sv,_=np.linalg.svd(j_out2[-1])
+		if np.min(sv)<jacobian_margin:
+			# print("min svd of J2 too small")
+			return 999
+
+		speed,_,_=traj_speed_est_dual(self.robot1,self.robot2,q_out1,q_out2,self.lam,self.v_cmd)
+
+		return -min(speed)
+	
+	def dual_arm_opt_w_q2init(self,x):
+
+		##x:q_init2,theta_0
+		q_init2=x[:6]
+		pose2_world_now=self.robot2.fwd(q_init2,world=True)
+
+		R_temp=direction2R(pose2_world_now.R@(self.curve_normal[0]),pose2_world_now.R@(-self.curve[1]+self.curve[0]))
+		R=np.dot(R_temp,Rz(x[-1]))
+		try:
+			q_init1=self.robot1.inv(pose2_world_now.R@self.curve[0]+pose2_world_now.p,R)[0]
+			q_out1,q_out2,j_out1,j_out2=self.dual_arm_stepwise_optimize(q_init1,q_init2,w1=0.01,w2=0.01)
 		except:
 			# traceback.print_exc()
 			return 999
 
+		joint_margin=0.01
+		
 		###make sure extension possible by checking start & end configuration
-		if np.min(self.robot1.upper_limit-q_out1[0])<0.2 or  np.min(q_out1[0]-self.robot1.lower_limit)<0.2 or np.min(self.robot1.upper_limit-q_out1[-1])<0.2 or np.min(q_out1[-1]-self.robot1.lower_limit)<0.2:
+		if np.min(self.robot1.upper_limit-q_out1[0])<joint_margin or  np.min(q_out1[0]-self.robot1.lower_limit)<joint_margin or np.min(self.robot1.upper_limit-q_out1[-1])<joint_margin or np.min(q_out1[-1]-self.robot1.lower_limit)<joint_margin:
+			return 999
+		###make sure extension possible by checking start & end configuration
+		if np.min(self.robot2.upper_limit-q_out2[0])<joint_margin or  np.min(q_out2[0]-self.robot2.lower_limit)<joint_margin or np.min(self.robot2.upper_limit-q_out2[-1])<joint_margin or  np.min(q_out2[-1]-self.robot2.lower_limit)<joint_margin:
+			return 999
+		
+		jacobian_margin=0.1
+		jac_check_count=int(len(j_out1)/100)
+		### J1
+		for J in j_out1[::jac_check_count]:
+			_,sv,_=np.linalg.svd(J)
+			if np.min(sv)<jacobian_margin:
+				# print("min svd of J1 too small")
+				return 999
+		_,sv,_=np.linalg.svd(j_out1[-1])
+		if np.min(sv)<jacobian_margin:
+			# print("min svd of J1 too small")
+			return 999
+		### J2
+		for J in j_out2[::jac_check_count]:
+			_,sv,_=np.linalg.svd(J)
+			if np.min(sv)<jacobian_margin:
+				# print("min svd of J2 too small")
+				return 999
+		_,sv,_=np.linalg.svd(j_out2[-1])
+		if np.min(sv)<jacobian_margin:
+			# print("min svd of J1 too small")
 			return 999
 
-		###make sure extension possible by checking start & end configuration
-		if np.min(self.robot2.upper_limit-q_out2[0])<0.2 or  np.min(q_out2[0]-self.robot2.lower_limit)<0.2 or np.min(self.robot2.upper_limit-q_out2[-1])<0.2 or  np.min(q_out2[-1]-self.robot2.lower_limit)<0.2:
-			return 999
+		speed,_,_=traj_speed_est_dual(self.robot1,self.robot2,q_out1,q_out2,self.lam,self.v_cmd)
 
-		speed,_,_=traj_speed_est_dual(self.robot1,self.robot2,q_out1,q_out2,base2_R,base2_p,self.lam,self.v_cmd)
-
-		print(min(speed))
 		return -min(speed)
 
 	def single_arm_theta0_opt(self,theta0):
