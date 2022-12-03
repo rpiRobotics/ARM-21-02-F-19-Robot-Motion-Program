@@ -408,8 +408,9 @@ class SprayGUI(QDialog):
         self.tes_env.update_pose('FANUC_lrmate200id',H)
         self.tes_env.update_pose('ABB_1200_5_90',H)
         self.tes_env.update_pose('FANUC_m10ia',H)
-        self.tes_env.update_pose('curve_1',H)
-        self.tes_env.update_pose('curve_2',H)
+        self.tes_env.attach_part('curve_1','world')
+        self.tes_env.attach_part('curve_2','world')
+
 
     def read_ip(self):
         self.robot_ip= self.robot_ip_box.text()
@@ -492,9 +493,9 @@ class SprayGUI(QDialog):
             ### set robot2
             try:
                 if 'ABB' in self.robot2_name:
-                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=curve_dir+'/tcp_workpiece.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.robot1_name+'_'+self.robot2_name+'/tcp_workpiece.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
                 elif 'FANUC' in self.robot2_name:
-                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=curve_dir+'/tcp_workpiece.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.robot1_name+'_'+self.robot2_name+'/tcp_workpiece.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
             except Exception as e:
                 print(e)
                 return
@@ -672,9 +673,9 @@ class SprayGUI(QDialog):
                 return
             ### set robot2
             if 'ABB' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
             elif 'FANUC' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
             #################################
             self.moprog_worker=Worker(motion_program_generation_baseline_dual,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,total_seg)
 
@@ -723,9 +724,9 @@ class SprayGUI(QDialog):
                 return
             ### set robot2
             if 'ABB' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
             elif 'FANUC' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
             #################################
             self.moprog_worker=Worker(motion_program_generation_greedy_dual,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,greedy_thresh)
 
@@ -869,17 +870,17 @@ class SprayGUI(QDialog):
 
         ### for FANUC utool
         if self.dualRobot_box.isChecked():
-            if "FANUC" in self.robot1.robot_name:
-                utool2_layout=QHBoxLayout()
-                utool2_label=QLabel('Robot2 Utool')
-                self.utool2_box=QSpinBox()
-                self.utool2_box.setMinimum(1)
-                self.utool2_box.setMaximum(20)
-                self.utool2_box.setValue(2)
-                self.utool2_box.setSingleStep(1)
-                utool2_label.setBuddy(self.utool2_box)
-                utool2_layout.addWidget(utool2_label)
-                utool2_layout.addWidget(self.utool2_box)
+            # if "FANUC" in self.robot1.robot_name:
+            utool2_layout=QHBoxLayout()
+            utool2_label=QLabel('Robot2 Utool')
+            self.utool2_box=QSpinBox()
+            self.utool2_box.setMinimum(1)
+            self.utool2_box.setMaximum(20)
+            self.utool2_box.setValue(2)
+            self.utool2_box.setSingleStep(1)
+            utool2_label.setBuddy(self.utool2_box)
+            utool2_layout.addWidget(utool2_label)
+            utool2_layout.addWidget(self.utool2_box)
 
         self.moupdate_runButton=QPushButton("Run Motion Update")
         self.moupdate_runButton.setDefault(True)
@@ -929,38 +930,52 @@ class SprayGUI(QDialog):
     def read_Solution(self):
 
         try:
+            ###TODO: warning if not a valid solution directory
             solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+            #read part name
+            curve_stringidx1=solution_dir.index('data/')
+            part_name=solution_dir[curve_stringidx1+5:]
+            curve_stringidx2=part_name.index('/')
+            part_name=part_name[:curve_stringidx2]
+
             ### read curve
             if not self.dualRobot_box.isChecked():
                 self.des_curve_filename = solution_dir+'/Curve_in_base_frame.csv'
+                ### read part/base pose
+                self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
+                
+                if self.tes_env is not None:             
+                    part_pose_m=copy.deepcopy(self.part_pose)
+                    part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
+                    self.tes_env.update_pose(part_name,part_pose_m)
+
+
             else:
                 self.des_curve_filename = solution_dir+'/../../Curve_dense.csv'
-            ### read js
-            self.des_curvejs1_filename = solution_dir+'/Curve_js1.csv'
-            if self.dualRobot_box.isChecked():
-                self.des_curvejs2_filename = solution_dir+'/Curve_js2.csv'
-            ### read part/base pose
-            if not self.dualRobot_box.isChecked():
-                self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
-            else:
                 self.base2_pose=np.loadtxt(solution_dir+'/base.csv',delimiter=',')
-            
-            if not self.dualRobot_box.isChecked():
-                curve_stringidx1=solution_dir.index('data/')
-                part_name=solution_dir[curve_stringidx1+5:]
-                curve_stringidx2=part_name.index('/')
-                part_name=part_name[:curve_stringidx2]
-                ###TODO: warning if not a valid solution directory
-                part_pose_m=copy.deepcopy(self.part_pose)
-                part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
+                self.des_curvejs2_filename = solution_dir+'/Curve_js2.csv'
 
+                if self.tes_env is not None:
+                    #update robot2 base
+                    base2_pose_m=copy.deepcopy(self.base2_pose)
+                    base2_pose_m[:-1,-1]=base2_pose_m[:-1,-1]/1000.
+                    self.tes_env.update_pose(self.robot2_name,base2_pose_m)
+                    #update robot2 holding part
+                    tcp_workpiece=np.loadtxt(solution_dir+'/../tcp_workpiece.csv',delimiter=',')
+                    tcp_workpiece[:-1,-1]=tcp_workpiece[:-1,-1]/1000.
+                    self.tes_env.attach_part(part_name,self.robot2_name+'_link_6',H=tcp_workpiece)
+                    
+                    
+
+
+            ### read js1
+            self.des_curvejs1_filename = solution_dir+'/Curve_js1.csv'
             self.solutionDirtext.setText(solution_dir)
-        except Exception as e:
-            print(e)
 
-        if not self.dualRobot_box.isChecked():
-            if self.tes_env is not None:
-                self.tes_env.update_pose(part_name,part_pose_m)
+        except Exception as e:
+            self.showdialog(e)
+
+            
     
     def readCmdFile(self):
         
@@ -1089,9 +1104,9 @@ class SprayGUI(QDialog):
                 ### set robot2
                 utool2=None
                 if 'ABB' in self.robot2_name:
-                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
                 elif 'FANUC' in self.robot2_name:
-                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
                     utool2=int(self.utool2_box.value())
                 #################################
                 self.moupdate_worker=Worker(motion_program_update_dual,self.cmd_pathname,self.robot1,self.robot2,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,self.des_curvejs2_filename,\
