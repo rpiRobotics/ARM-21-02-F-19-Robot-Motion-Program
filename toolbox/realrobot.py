@@ -93,7 +93,7 @@ def average_N_exe_fanuc(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_
 			## add curve js to dictionary
 			curve_exe_js_all[stamp].append(curve_exe_js[i])
 	
-	timestamp_out = curve_exe_js_all.keys()
+	timestamp_out = list(curve_exe_js_all.keys())
 	timestamp_out=np.sort(timestamp_out)
 	curve_exe_js_out=[]
 	for stamp in timestamp_out:
@@ -187,7 +187,7 @@ def average_N_exe_multimove_fanuc(ms,robot1,robot2,base2_R,base2_p,primitives1,p
 			curve_exe_js1_all[stamp].append(curve_exe_js1[i])
 			curve_exe_js2_all[stamp].append(curve_exe_js2[i])
 	
-	timestamp_out = curve_exe_js1.keys()
+	timestamp_out = list(curve_exe_js1_all.keys())
 	timestamp_out=np.sort(timestamp_out)
 	curve_exe_js1_out=[]
 	curve_exe_js2_out=[]
@@ -223,8 +223,10 @@ def average_N_exe_multimove_fanuc(ms,robot1,robot2,base2_R,base2_p,primitives1,p
 				act_speed.append(np.linalg.norm(relative_path_exe[-1]-relative_path_exe[-2])/timestep)
 			except IndexError:
 				pass
+	
 
-	return lam,curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1_out,curve_exe_js2_out,act_speed,timestamp_out,relative_path_exe,relative_path_exe_R
+	return np.array(lam),np.array(curve_exe1),np.array(curve_exe2),np.array(curve_exe_R1),np.array(curve_exe_R2),\
+		np.array(curve_exe_js1_out),np.array(curve_exe_js2_out),np.array(act_speed),np.array(timestamp_out),np.array(relative_path_exe),np.array(relative_path_exe_R)
 
 def average_5_egm_car_exe(et,curve_cmd,curve_cmd_R):
 	###5 run execute egm Cartesian

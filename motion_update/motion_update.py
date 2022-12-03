@@ -362,7 +362,10 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
     ## desired curve
     relative_path=desired_curve
     ## output directory
-    ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
+    if realrobot:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'_realrobot/'
+    else:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
     Path(ilc_output).mkdir(exist_ok=True)
     ## robot2 base
     base2_T=robot2.base_H
@@ -395,7 +398,7 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
 
         if realrobot:
             lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe, relative_path_exe_R = \
-                average_N_exe_multimove_fanuc(ms,robot1,robot2,base2_R,base2_p,primitives1,primitives2,breakpoints1,p_bp1,p_bp2,q_bp1,q_bp2,s,z,log_path='',N=5)
+                average_N_exe_multimove_fanuc(ms,robot1,robot2,base2_R,base2_p,primitives1,primitives2,breakpoints1,p_bp1,p_bp2,q_bp1,q_bp2,s,z,log_path='',N=2)
         else:
             ###execution with plant
             logged_data=ms.exec_motions_multimove(robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,s,z)

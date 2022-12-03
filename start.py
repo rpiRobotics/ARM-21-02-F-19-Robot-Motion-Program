@@ -1050,11 +1050,16 @@ class SprayGUI(QDialog):
         extstart=float(self.extend_start_box.value())
         extend=float(self.extend_end_box.value())
         self.run4_result.setText('Updating Motion Program')
+        self.run4_result_img.setText('')
 
         ## delete previous tmp result
+        if self.realrobot:
+            ilc_output='result_speed_'+str(vel)+'_realrobot'
+        else:
+            ilc_output='result_speed_'+str(vel)
         all_files=os.listdir(self.cmd_pathname)
-        if 'result_speed_'+str(vel) in all_files:
-            output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
+        if ilc_output in all_files:
+            output_dir=self.cmd_pathname+'/'+ilc_output+'/'
             all_files=os.listdir(output_dir)
             if 'final_speed.npy' in all_files:
                 os.remove(output_dir+'final_speed.npy')
@@ -1119,7 +1124,11 @@ class SprayGUI(QDialog):
     def prog_MotionProgUpdate(self,n):
 
         vel=int(self.vel_box.value())
-        output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
+        if self.realrobot:
+            output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'_realrobot/'
+        else:
+            output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
+        
         try:
             all_files=os.listdir(output_dir)
         except:
@@ -1154,23 +1163,28 @@ class SprayGUI(QDialog):
         
         vel=int(self.vel_box.value())
 
+        if self.realrobot:
+            ilc_output='/result_speed_'+str(vel)+'_realrobot'
+        else:
+            ilc_output='/result_speed_'+str(vel)
+
         # save motion program commands and js execution
         if not self.dualRobot_box.isChecked():
             curve_exe_js,speed,error,angle_error,breakpoints,primitives,q_bp,p_bp,run_duration=result
             df=DataFrame({'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
-            df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command.csv',header=True,index=False)
-            DataFrame(curve_exe_js).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js_exe.csv',header=False,index=False)
+            df.to_csv(self.cmd_pathname+ilc_output+'/final_command.csv',header=True,index=False)
+            DataFrame(curve_exe_js).to_csv(self.cmd_pathname+ilc_output+'/curve_js_exe.csv',header=False,index=False)
         else:
             curve_exe_js1,curve_exe_js2,speed,error,angle_error,breakpoints,primitives1,q_bp1,p_bp1,primitives2,q_bp2,p_bp2,run_duration=result
             df=DataFrame({'primitives':primitives1,'p_bp':p_bp1,'q_bp':q_bp1})
-            df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command1.csv',header=True,index=False)
+            df.to_csv(self.cmd_pathname+ilc_output+'/final_command1.csv',header=True,index=False)
             df=DataFrame({'primitives':primitives2,'p_bp':p_bp2,'q_bp':q_bp2})
-            df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command2.csv',header=True,index=False)
-            DataFrame(curve_exe_js1).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js1_exe.csv',header=False,index=False)
-            DataFrame(curve_exe_js2).to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/curve_js2_exe.csv',header=False,index=False)
+            df.to_csv(self.cmd_pathname+ilc_output+'/final_command2.csv',header=True,index=False)
+            DataFrame(curve_exe_js1).to_csv(self.cmd_pathname+ilc_output+'/curve_js1_exe.csv',header=False,index=False)
+            DataFrame(curve_exe_js2).to_csv(self.cmd_pathname+ilc_output+'/curve_js2_exe.csv',header=False,index=False)
 
         result_text='Motion Program Update. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration))+\
-            '\nCommand file saved at\n'+self.cmd_pathname+'/result_speed_'+str(vel)
+            '\nCommand file saved at\n'+self.cmd_pathname+ilc_output
         result_text+='\nMax Error:'+str(round(np.max(error),2))+' mm, Max Ang Error:'+str(round(np.max(angle_error),2))+' deg'+\
             '\nAve. Speed:'+str(round(np.mean(speed),2))+' mm/sec, Std. Speed:'+str(round(np.std(speed),2))+' mm/sec, Std/Ave Speed:'+str(round(100*np.std(speed)/np.mean(speed),2))+' %'
         self.run4_result.setText(result_text)
