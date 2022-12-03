@@ -122,8 +122,6 @@ class greedy_fit_dual(fitting_toolbox):
                 curve_fit1,curve_fit_R1,_,_,_=self.primitives[primitive1](self.relative_path[indices],self.curve_js1[indices],self.relative_R[indices],\
                     self.robot1,self.curve_fit1[-1] if len(self.curve_fit1)>0 else [],self.curve_fit_R1[-1] if len(self.curve_fit_R1)>0 else [])
 
-            print(primitive1)
-
             ###convert relative curve_fit into world frame, then solves inv
             curve_fit1_world=copy.deepcopy(curve_fit1)
             curve_fit_R1_world=copy.deepcopy(curve_fit_R1)

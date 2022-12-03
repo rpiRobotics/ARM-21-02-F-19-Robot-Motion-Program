@@ -21,7 +21,7 @@ def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_cu
         traceback.print_exc()
 
 def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs1_filename,desired_curvejs2_filename,\
-    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,utool2):
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,utool2=None):
 
     try:
         curve = read_csv(desired_curve_filename,header=None).values

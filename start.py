@@ -322,7 +322,7 @@ class SprayGUI(QDialog):
 
         ##### transformation param
         if self.dualRobot_box.isChecked():
-            baseTransformHeadsup=QLabel('Enter base transformation to skip base pose optimization')
+            baseTransformHeadsup=QLabel('Enter Robot2 Base Transformation Initial Guess')
             baseTransLayout=QHBoxLayout()
             # baseRotLayout=QHBoxLayout()
             self.r2_basePx_box=QLineEdit('1000')
@@ -346,7 +346,7 @@ class SprayGUI(QDialog):
             baseTransLayout.addWidget(r2_baseRz_label)
             baseTransLayout.addWidget(self.r2_baseRz_box)
 
-            qinit2Headsup=QLabel('Enter Robot2 Joint Initial (degree)')
+            qinit2Headsup=QLabel('Enter Robot2 Joint Initial Guess (degree)')
             qinit2Layout=QHBoxLayout()
             self.r2init_boxes=[]
             r2init_labels=[]
@@ -639,7 +639,7 @@ class SprayGUI(QDialog):
             self.curvejs_pathname = solution_dir
             self.curvejs1_filename = solution_dir+'/Curve_js1.csv'
             if self.dualRobot_box.isChecked():
-                self.curvej2_filename = solution_dir+'/Curve_js2.csv'
+                self.curvejs2_filename = solution_dir+'/Curve_js2.csv'
             self.curvejs_solutionDirtext.setText(solution_dir)
         except Exception as e:
             print(e)
@@ -672,11 +672,11 @@ class SprayGUI(QDialog):
                 return
             ### set robot2
             if 'ABB' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
             elif 'FANUC' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
             #################################
-            self.moprog_worker=Worker(motion_program_generation_baseline,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,total_seg)
+            self.moprog_worker=Worker(motion_program_generation_baseline_dual,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,total_seg)
 
         self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread=\
             setup_worker_timer(self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread,\
@@ -723,11 +723,11 @@ class SprayGUI(QDialog):
                 return
             ### set robot2
             if 'ABB' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
             elif 'FANUC' in self.robot2_name:
-                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/../../tcp_workpiece.csv',base_transformation_file=self.curvejs_pathname+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
             #################################
-            self.moprog_worker=Worker(motion_program_generation_greedy,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,greedy_thresh)
+            self.moprog_worker=Worker(motion_program_generation_greedy_dual,self.curvejs1_filename,self.robot1,self.curvejs2_filename,self.robot2,greedy_thresh)
 
         self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread=\
             setup_worker_timer(self.moprog_worker,self.moprog_thread,self.moprog_timer,self.moprog_timer_thread,\
@@ -792,7 +792,7 @@ class SprayGUI(QDialog):
             df.to_csv(save_filepath+'command.csv',header=True,index=False)
         else:
             breakpoints1,primitives1,q_bp1,p_bp1,breakpoints2,primitives2,q_bp2,p_bp2,run_duration=result
-            save_filepath=self.curvejs_pathname+'/greedy'+str(int(self.greedy_thresh_box.value()))+'_dual/'
+            save_filepath=self.curvejs_pathname+'/greedy'+str(self.greedy_thresh_box.value())+'_dual/'
             Path(save_filepath).mkdir(exist_ok=True)
             # save motion program commands
             df=DataFrame({'breakpoints':breakpoints1,'primitives':primitives1,'p_bp':p_bp1,'q_bp':q_bp1})
@@ -812,10 +812,10 @@ class SprayGUI(QDialog):
         solution_button.clicked.connect(self.read_Solution)
         self.solutionDirtext=QLabel('(Please select solution directory)')
 
-        filebutton=QPushButton('Open Command File')
+        filebutton=QPushButton('Open Command Directory')
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCmdFile)
-        self.cmd_filenametext=QLabel('(Please add motion command file)')
+        self.cmd_filenametext=QLabel('(Please select motion command directory)')
 
         # box for vel
         self.vel_box = QSpinBox()
@@ -870,11 +870,16 @@ class SprayGUI(QDialog):
         ### for FANUC utool
         if self.dualRobot_box.isChecked():
             if "FANUC" in self.robot1.robot_name:
+                utool2_layout=QHBoxLayout()
+                utool2_label=QLabel('Robot2 Utool')
                 self.utool2_box=QSpinBox()
                 self.utool2_box.setMinimum(1)
                 self.utool2_box.setMaximum(20)
                 self.utool2_box.setValue(2)
                 self.utool2_box.setSingleStep(1)
+                utool2_label.setBuddy(self.utool2_box)
+                utool2_layout.addWidget(utool2_label)
+                utool2_layout.addWidget(self.utool2_box)
 
         self.moupdate_runButton=QPushButton("Run Motion Update")
         self.moupdate_runButton.setDefault(True)
@@ -913,7 +918,7 @@ class SprayGUI(QDialog):
         layout.addLayout(tollayout)
         layout.addLayout(extendlayout)
         if self.dualRobot_box.isChecked():
-            layout.addWidget(self.utool2_box)
+            layout.addLayout(utool2_layout)
         layout.addWidget(self.visual_runButton)
         layout.addWidget(self.moupdate_runButton)
         layout.addWidget(self.run4_result)
@@ -940,31 +945,40 @@ class SprayGUI(QDialog):
             else:
                 self.base2_pose=np.loadtxt(solution_dir+'/base.csv',delimiter=',')
             
-            curve_stringidx1=solution_dir.index('data/')
-            part_name=solution_dir[curve_stringidx1+5:]
-            curve_stringidx2=part_name.index('/')
-            part_name=part_name[:curve_stringidx2]
-            ###TODO: warning if not a valid solution directory
-            part_pose_m=copy.deepcopy(self.part_pose)
-            part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
+            if not self.dualRobot_box.isChecked():
+                curve_stringidx1=solution_dir.index('data/')
+                part_name=solution_dir[curve_stringidx1+5:]
+                curve_stringidx2=part_name.index('/')
+                part_name=part_name[:curve_stringidx2]
+                ###TODO: warning if not a valid solution directory
+                part_pose_m=copy.deepcopy(self.part_pose)
+                part_pose_m[:-1,-1]=part_pose_m[:-1,-1]/1000.
+
             self.solutionDirtext.setText(solution_dir)
         except Exception as e:
             print(e)
 
-        if self.tes_env is not None:
-            self.tes_env.update_pose(part_name,part_pose_m)
+        if not self.dualRobot_box.isChecked():
+            if self.tes_env is not None:
+                self.tes_env.update_pose(part_name,part_pose_m)
     
     def readCmdFile(self):
         
-        dlg = QFileDialog()
-        dlg.setFileMode(QFileDialog.AnyFile)
-        dlg.setFilter(QDir.Files)
+        # dlg = QFileDialog()
+        # dlg.setFileMode(QFileDialog.AnyFile)
+        # dlg.setFilter(QDir.Files)
 
-        if dlg.exec_():
-            filenames = dlg.selectedFiles()
-            self.cmd_filename = filenames[0]
-            self.cmd_pathname = os.path.dirname(self.cmd_filename)
-            self.cmd_filenametext.setText(self.cmd_filename)
+        # if dlg.exec_():
+        #     filenames = dlg.selectedFiles()
+        #     self.cmd_filename = filenames[0]
+        #     self.cmd_pathname = os.path.dirname(self.cmd_filename)
+        #     self.cmd_filenametext.setText(self.cmd_filename)
+        
+        try:
+            self.cmd_pathname = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+            self.cmd_filenametext.setText(self.cmd_pathname)
+        except Exception as e:
+            print(e)
     
     def run_Visualization(self):
 
@@ -1023,15 +1037,12 @@ class SprayGUI(QDialog):
         if self.robot1 is None:
             self.run4_result.setText("Robot1 not yet choosed.")
             return
-        if self.cmd_filename is None:
+        if self.cmd_pathname is None:
             self.run4_result.setText("Command file not yet choosed.")
             return
-
-        if 'ABB' in self.robot2_name:
-            self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
-        elif 'FANUC' in self.robot2_name:
-            self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
         
+        solution_dir=self.solutionDirtext.text()
+
         vel=int(self.vel_box.value())
         errtol=float(self.error_box.value())
         angerrtol=float(self.ang_error_box.value())
@@ -1042,7 +1053,7 @@ class SprayGUI(QDialog):
 
         ## delete previous tmp result
         all_files=os.listdir(self.cmd_pathname)
-        if self.cmd_pathname+'/result_speed_'+str(vel)+'/' in all_files:
+        if 'result_speed_'+str(vel) in all_files:
             output_dir=self.cmd_pathname+'/result_speed_'+str(vel)+'/'
             all_files=os.listdir(output_dir)
             if 'final_speed.npy' in all_files:
@@ -1065,19 +1076,21 @@ class SprayGUI(QDialog):
                     errtol,angerrtol,velstdtol,extstart,extend,self.realrobot)
             else:
                 if self.robot2_name is None:
-                    self.run3_result.setText("Robot2 not yet choosed.")
+                    self.run4_result.setText("Robot2 not yet choosed.")
                     return
-                if self.curvejs2_filename is None:
-                    self.run3_result.setText("Solution folder not chosen or Curve_js2 not exists")
+                if self.des_curvejs2_filename is None:
+                    self.run4_result.setText("Solution folder not chosen or Curve_js2 not exists")
                     return
                 ### set robot2
+                utool2=None
                 if 'ABB' in self.robot2_name:
-                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
                 elif 'FANUC' in self.robot2_name:
-                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.curvejs_pathname+'/tcp.csv',base_transformation_file=self.curvejs_pathname+'base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                    utool2=int(self.utool2_box.value())
                 #################################
-                self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot2,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,self.des_curvejs2_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot)
+                self.moupdate_worker=Worker(motion_program_update_dual,self.cmd_pathname,self.robot1,self.robot2,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,self.des_curvejs2_filename,\
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,utool2)
             
             self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
                 setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\
@@ -1142,7 +1155,7 @@ class SprayGUI(QDialog):
         vel=int(self.vel_box.value())
 
         # save motion program commands and js execution
-        if self.dualRobot_box.isChecked():
+        if not self.dualRobot_box.isChecked():
             curve_exe_js,speed,error,angle_error,breakpoints,primitives,q_bp,p_bp,run_duration=result
             df=DataFrame({'primitives':primitives,'p_bp':p_bp,'q_bp':q_bp})
             df.to_csv(self.cmd_pathname+'/result_speed_'+str(vel)+'/final_command.csv',header=True,index=False)

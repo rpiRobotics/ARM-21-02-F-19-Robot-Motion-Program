@@ -1,6 +1,7 @@
 import numpy as np
 import sys, traceback, os
 from .greedy import *
+from .greedy_dual import *
 
 def motion_program_generation_baseline(filename,robot,total_seg):
     ###generate motion primitive command for equally spaced moveL as baseline
@@ -24,7 +25,7 @@ def motion_program_generation_baseline(filename,robot,total_seg):
 
     return breakpoints,primitives,q_bp,p_bp
 
-def motion_program_generation_baseline(filename1,robot1,filename2,robot2,total_seg):
+def motion_program_generation_baseline_dual(filename1,robot1,filename2,robot2,total_seg):
     ###generate motion primitive command for equally spaced moveL as baseline
     curve_js1 =np.loadtxt(filename1,delimiter=',')
     curve_js2 =np.loadtxt(filename2,delimiter=',')
@@ -86,11 +87,22 @@ def motion_program_generation_greedy_dual(filename1,robot1,filename2,robot2,gree
     curve_js2 =np.loadtxt(filename2,delimiter=',')
 
     min_length=0
-    greedy_fit_obj=greedy_fit(robot1,robot2,curve_js1[::1],curve_js2[::1],min_length,greedy_thresh)
+    greedy_fit_obj=greedy_fit_dual(robot1,robot2,curve_js1,curve_js2,min_length,greedy_thresh)
 
     greedy_fit_obj.primitives={'movel_fit':greedy_fit_obj.movel_fit,'movec_fit':greedy_fit_obj.movec_fit}
 
     breakpoints,primitives_choices1,p_bp1,q_bp1,primitives_choices2,p_bp2,q_bp2=greedy_fit_obj.fit_under_error()
+
+    if 'ABB' in robot1.robot_name:
+        primitives_choices1.insert(0,'moveabsj_fit')
+        primitives_choices2.insert(0,'moveabsj_fit')
+    elif 'FANUC' in robot1.robot_name:
+        primitives_choices1.insert(0,'movej_fit')
+        primitives_choices2.insert(0,'movej_fit')
+    p_bp1.insert(0,[greedy_fit_obj.curve_fit1_world[0]])
+    q_bp1.insert(0,[greedy_fit_obj.curve_fit_js1[0]])
+    p_bp2.insert(0,[greedy_fit_obj.curve2[0]])
+    q_bp2.insert(0,[greedy_fit_obj.curve_js2[0]])
 
     breakpoints[1:]=breakpoints[1:]-1
 
