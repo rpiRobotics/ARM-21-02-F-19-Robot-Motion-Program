@@ -401,7 +401,8 @@ class SprayGUI(QDialog):
 
         if self.tes_env is None:
             return
-
+        ###TODO: FIX QUICK TESSERACT RESET
+        # self.tes_env=Tess_Env('config/urdf/')
         H=np.eye(4)
         H[:-1,-1]=100*np.ones(3)
         self.tes_env.update_pose('ABB_6640_180_255',H)
@@ -866,7 +867,6 @@ class SprayGUI(QDialog):
         self.visual_runButton=QPushButton("Run Visualization")
         self.visual_runButton.setDefault(True)
         self.visual_runButton.clicked.connect(self.run_Visualization)
-        self.run3_result=QLabel('')
 
         ### for FANUC utool
         if self.dualRobot_box.isChecked():
@@ -941,6 +941,7 @@ class SprayGUI(QDialog):
             ### read curve
             if not self.dualRobot_box.isChecked():
                 self.des_curve_filename = solution_dir+'/Curve_in_base_frame.csv'
+                self.des_curvejs1_filename = solution_dir+'/Curve_js.csv'
                 ### read part/base pose
                 self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
                 
@@ -953,6 +954,7 @@ class SprayGUI(QDialog):
             else:
                 self.des_curve_filename = solution_dir+'/../../Curve_dense.csv'
                 self.base2_pose=np.loadtxt(solution_dir+'/base.csv',delimiter=',')
+                self.des_curvejs1_filename = solution_dir+'/Curve_js1.csv'
                 self.des_curvejs2_filename = solution_dir+'/Curve_js2.csv'
 
                 if self.tes_env is not None:
@@ -963,13 +965,9 @@ class SprayGUI(QDialog):
                     #update robot2 holding part
                     tcp_workpiece=np.loadtxt(solution_dir+'/../tcp_workpiece.csv',delimiter=',')
                     tcp_workpiece[:-1,-1]=tcp_workpiece[:-1,-1]/1000.
-                    self.tes_env.attach_part(part_name,self.robot2_name+'_link_6',H=tcp_workpiece)
-                    
-                    
-
-
+                    self.tes_env.attach_part(part_name,self.robot2_name+'_flange',H=tcp_workpiece)
+                  
             ### read js1
-            self.des_curvejs1_filename = solution_dir+'/Curve_js1.csv'
             self.solutionDirtext.setText(solution_dir)
 
         except Exception as e:
@@ -998,54 +996,22 @@ class SprayGUI(QDialog):
     def run_Visualization(self):
 
         if self.tes_env is None:
-            self.run3_result.setText("Tesseract Visualizer is not activated")
+            self.showdialog("Tesseract Visualizer is not activated")
             return
 
         if self.robot1 is None:
-            self.run3_result.setText("Robot1 not yet choosed.")
+            self.showdialog("Robot1 not yet choosed.")
             return
         
-        vel=int(self.vel_box.value())
-        errtol=float(self.error_box.value())
-        angerrtol=float(self.ang_error_box.value())
-        velstdtol=float(self.vel_std_box.value())
-        self.run3_result.setText('Running Visualization')
-        # qthread for motion update
-        self.visual_thread=QThread()
-        self.visual_timer_thread=QThread()
-        self.visual_timer=Timer()
+        if not self.dualRobot_box.isChecked():  #single arm case
+            curve_js=np.loadtxt(self.des_curvejs1_filename,delimiter=',')
+            self.tes_env.viewer_trajectory(self.robot1_name,curve_js[::100])
+        else:                                   #dual arm case
+            curve_js1=np.loadtxt(self.des_curvejs1_filename,delimiter=',')
+            curve_js2=np.loadtxt(self.des_curvejs2_filename,delimiter=',')
+            self.tes_env.viewer_trajectory_dual(self.robot1_name,self.robot2_name,curve_js1[::100],curve_js2[::100])
 
-        curve_js=np.loadtxt(self.des_curvejs1_filename,delimiter=',')
-        try:    ###TODO: add error box popup
-            self.visual_worker=Worker(self.tes_env.viewer_trajectory,self.robot1_name,curve_js[::100])
-            self.visual_worker,self.visual_thread,self.visual_timer,self.visual_timer_thread=\
-                setup_worker_timer(self.visual_worker,self.visual_thread,self.visual_timer,self.visual_timer_thread,self.prog_Visualization,self.res_Visualization)
-        except:
-            traceback.print_exc()
-            self.showdialog(traceback.format_exc())
 
-        ## edit interface
-        self.visual_runButton.setEnabled(False)
-
-        ## final result setup
-        self.visual_thread.finished.connect(lambda: self.visual_runButton.setEnabled(True))
-
-        ## start thread
-        self.visual_timer_thread.start()
-        self.visual_thread.start()
-    
-    def prog_Visualization(self,n):
-        
-        self.run3_result.setText('Running Visualization. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
-
-    def res_Visualization(self,result):
-
-        if len(result) <= 1:
-            run_duration=result[0]
-            self.run3_result.setText('Visualization Failed. Time:'+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
-            return
-
-        self.run3_result.setText('Visualzation on localhost:8000\nTime: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
 
     def run_MotionProgUpdate(self):
 

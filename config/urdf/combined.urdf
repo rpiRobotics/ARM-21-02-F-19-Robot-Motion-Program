@@ -42,6 +42,28 @@
     <origin rpy="0.0 0.0 0.0" xyz="0 -2.0 0.0"/><!--ABB_1200_5_90 pedestal-->
   </joint>
 
+  <joint name="ABB_1200_5_90_flange_pose" type="fixed">
+    <parent link="ABB_1200_5_90_link_6"/>
+    <child link="ABB_1200_5_90_flange"/>
+    <origin rpy="0.0 1.57079632679 0.0" xyz="0 0.0 0.0"/><!--ABB_1200_5_90 flange-->
+  </joint>
+  <joint name="ABB_6640_180_255_flange_pose" type="fixed">
+    <parent link="ABB_6640_180_255_link_6"/>
+    <child link="ABB_6640_180_255_flange"/>
+    <origin rpy="0.0 1.57079632679 0.0" xyz="0 0.0 0.0"/><!--ABB_6640_180_255 flange-->
+  </joint>
+
+  <joint name="FANUC_lrmate200id_flange_pose" type="fixed">
+    <parent link="FANUC_lrmate200id_link_6"/>
+    <child link="FANUC_lrmate200id_flange"/>
+    <origin rpy="0.0 1.57079632679 0.0" xyz="0 0.0 0.0"/><!--FANUC_lrmate200id flange-->
+  </joint>
+  <joint name="FANUC_m10ia_flange_pose" type="fixed">
+    <parent link="FANUC_m10ia_link_6"/>
+    <child link="FANUC_m10ia_flange"/>
+    <origin rpy="0.0 1.57079632679 0.0" xyz="0 0.0 0.0"/><!--FANUC_m10ia flange-->
+  </joint>
+  
 
   <!--curve_1 part-->
   <link name="curve_1_base_link">
@@ -344,6 +366,7 @@
       <inertia ixx=".017" ixy="0" ixz="0" iyy=".009" iyz="0" izz=".009"/>
     </inertial>
   </link>
+  <link name="ABB_6640_180_255_flange"/>
   <link name="ABB_6640_180_255_tool">
     <visual name="visual">
       <origin rpy="0 0 0" xyz="0 0 0"/>
@@ -602,6 +625,7 @@
       </geometry>
     </visual>
   </link>
+  <link name="ABB_1200_5_90_flange"/>
 
   <!-- FANUC m10ia part -->
   <link name="FANUC_m10ia_base_link">
@@ -739,8 +763,10 @@
         <mesh filename="model://paintgun/meshes/paint_gun.stl" scale="0.001 0.001 0.001"/>
       </geometry>
     </collision>
-
   </link>
+
+  <link name="FANUC_m10ia_flange"/>
+
   <!-- joints: main serial chain -->
   <joint name="FANUC_m10ia_joint_1" type="revolute">
     <origin rpy="0 0 0" xyz="0 0 0.450"/>
@@ -910,6 +936,9 @@
       </geometry>
     </collision>
   </link>
+
+  <link name="FANUC_lrmate200id_flange"/>
+  
   <!-- joints: main serial chain -->
   <joint name="FANUC_lrmate200id_joint_1" type="revolute">
     <origin rpy="0 0 0" xyz="0 0 0.330"/>

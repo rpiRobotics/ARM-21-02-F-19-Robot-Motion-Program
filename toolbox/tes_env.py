@@ -123,6 +123,15 @@ class Tess_Env(object):
 		trajectory_json["trajectory"] = trajectory2.tolist()
 		self.viewer.trajectory_json=json.dumps(trajectory_json)
 
+	def viewer_trajectory_dual(self,robot_name1,robot_name2,curve_js1,curve_js2):
+		trajectory_json = dict()
+		trajectory_json["use_time"] = True
+		trajectory_json["loop_time"] = 20
+		trajectory_json["joint_names"] = self.robot_jointname[robot_name1]+self.robot_jointname[robot_name2]
+		trajectory2 = np.hstack((curve_js1,curve_js2,np.linspace(0,10,num=len(curve_js1))[np.newaxis].T))
+		trajectory_json["trajectory"] = trajectory2.tolist()
+		self.viewer.trajectory_json=json.dumps(trajectory_json)
+
 
 def main():
 
