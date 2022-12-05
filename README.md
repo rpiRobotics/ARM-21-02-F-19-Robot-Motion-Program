@@ -5,11 +5,13 @@ The repository for ARM project ARM-21-02-F-19-ROBOT-MOTION-PROGRAM
 ## GUI
 
 The GUI include the whole process of generating and optimizing the motion program, including.
-- Solving Redundancy Resolution (left). Determining the curve pose and the joint space trajectory.
-- Motion Program Generation (mid). From the curve pose and the joint space trajectory, generate a robot motion program.
+- Solving Redundancy Resolution (left). Determining the curve pose/robot2 base pose (for the dual robot case), and the joint space trajectory.
+- Motion Program Generation (mid). From the curve pose/robot2 base pose, and the joint space trajectory, generate a robot motion program.
 - Motion Program Update (right). Update motion program to further optimized it to satisfied requirements.
 
-Please click [here](https://github.com/rpiRobotics/ARM-21-02-F-19-Robot-Motion-Program/tree/main/doc/gui_manual.md) for detail instruction.
+For the single arm GUI, click [here](https://github.com/rpiRobotics/ARM-21-02-F-19-Robot-Motion-Program/tree/main/doc/gui_manual.md) for detail instruction.
+
+For the dual arm GUI, click [here](https://github.com/rpiRobotics/ARM-21-02-F-19-Robot-Motion-Program/tree/main/doc/gui_dual_manual.md) for detail instruction.
 
 ![](doc/figures/gui.png)
 

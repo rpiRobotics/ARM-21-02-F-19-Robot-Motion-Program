@@ -1,4 +1,4 @@
-# GUI Manual
+# GUI Dual Robot Manual
 
 The whole process process including three steps, Solving Redundancy Resolution, Motion Program Generation, Motion Program Update. Each step may have multiple algorithms/methods. The feature of allowing user to choose from methods will be added in the future.
 
