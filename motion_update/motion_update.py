@@ -616,7 +616,10 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
     for i in range(iteration_max):
 
         if realrobot:
-            curve_js_all_new, avg_curve_js, timestamp_d=average_N_exe_multimove(ms,breakpoints1,robot1,primitives1,p_bp1,q_bp1,vmax,z50,robot2,primitives2,p_bp2,q_bp2,v2_all,z50,relative_path,SAFE_Q1=None,SAFE_Q2=None,log_path='',N=10)
+            curve_js_all_new, avg_curve_js, timestamp_d=average_N_exe_multimove(ms,breakpoints1,robot1,primitives1,p_bp1,q_bp1,vmax,z50,robot2,primitives2,p_bp2,q_bp2,v2_all,z50,relative_path,safeq1=None,safeq2=None,log_path='',N=5)
+            ###calculat data with average curve
+            lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe, relative_path_exe_R =\
+                logged_data_analysis_multimove(robot1,robot2,timestamp_d,avg_curve_js)
         else:
             ###execution with plant
             log_results=ms.exec_motions_multimove(robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,vmax,v2_all,z50,z50)
