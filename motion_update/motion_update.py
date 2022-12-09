@@ -591,6 +591,8 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
     breakpoints1,primitives1,p_bp1,q_bp1=ms.extract_data_from_cmd(filepath+'/command1.csv')
     breakpoints2,primitives2,p_bp2,q_bp2=ms.extract_data_from_cmd(filepath+'/command2.csv')
 
+    ###get lambda at each breakpoint
+    lam_bp=lam_relative_path[np.append(breakpoints1[0],breakpoints1[1:]-1)]
 
     s1_all,s2_all=calc_individual_speed(velocity,lam1,lam2,lam_relative_path,breakpoints1)
     v2_all=[]
@@ -771,5 +773,15 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         q_bp1=q_bp1_new
         p_bp2=p_bp2_new
         q_bp2=q_bp2_new
+
+        ###cmd speed adjustment
+        speed_alpha=0.1
+        for m in range(1,len(lam_bp)):
+            ###get segment average speed
+            segment_avg=np.average(speed[np.argmin(np.abs(lam-lam_bp[m-1])):np.argmin(np.abs(lam-lam_bp[m]))])
+            ###cap above 100m/s for robot2
+            s2_all[m]+=speed_alpha*(velocity-segment_avg)
+            s2_all[m]=max(s2_all[m],100)
+            v2_all[m]=speeddata(s2_all[m],9999999,9999999,999999)
     
     return curve_exe_js1,curve_exe_js2,speed,error,np.rad2deg(angle_error),breakpoints1,primitives1,q_bp1,p_bp1,primitives2,q_bp2,p_bp2
