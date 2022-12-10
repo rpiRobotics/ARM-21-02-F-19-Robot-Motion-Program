@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from tesseract_robotics.tesseract_environment import Environment, ChangeJointOriginCommand
+from tesseract_robotics.tesseract_environment import Environment, ChangeJointOriginCommand, MoveJointCommand
 from tesseract_robotics import tesseract_geometry
 from tesseract_robotics.tesseract_common import Isometry3d, CollisionMarginData, Translation3d, Quaterniond, \
 	ManipulatorInfo
@@ -75,6 +75,14 @@ class Tess_Env(object):
 		#refresh
 		self.viewer.update_environment(self.t_env)
 
+	def attach_part(self,model_name,link_name,H=np.eye(4)):
+		cmd = MoveJointCommand(model_name+'_pose', link_name)
+		self.t_env.applyCommand(cmd)
+		cmd = ChangeJointOriginCommand(model_name+'_pose', Isometry3d(H))
+		self.t_env.applyCommand(cmd)
+		#refresh
+		self.viewer.update_environment(self.t_env)
+
 	def check_collision_single(self,robot_name,part_name,curve_js):
 		###check collision for a single robot, including self collision and collision with part
 
@@ -115,6 +123,15 @@ class Tess_Env(object):
 		trajectory_json["trajectory"] = trajectory2.tolist()
 		self.viewer.trajectory_json=json.dumps(trajectory_json)
 
+	def viewer_trajectory_dual(self,robot_name1,robot_name2,curve_js1,curve_js2):
+		trajectory_json = dict()
+		trajectory_json["use_time"] = True
+		trajectory_json["loop_time"] = 20
+		trajectory_json["joint_names"] = self.robot_jointname[robot_name1]+self.robot_jointname[robot_name2]
+		trajectory2 = np.hstack((curve_js1,curve_js2,np.linspace(0,10,num=len(curve_js1))[np.newaxis].T))
+		trajectory_json["trajectory"] = trajectory2.tolist()
+		self.viewer.trajectory_json=json.dumps(trajectory_json)
+
 
 def main():
 
@@ -146,8 +163,18 @@ def collision_test():
 
 	input("Press enter to quit")
 
+def attach_test():
+	t=Tess_Env('../config/urdf/')				#create obj
+	###attach part to robot eef
+	t.attach_part('curve_2','ABB_1200_5_90_link_6')
+
+	###visualize trajectory
+	curve_js=np.loadtxt('../data/curve_2/ABB_6640_180_255_ABB_1200_5_90/diffevo/Curve_js2.csv',delimiter=',')
+	t.viewer_trajectory('ABB_1200_5_90',curve_js[::100])
+
+	input("Press enter to quit")
 if __name__ == '__main__':
-	collision_test()
+	attach_test()
 
 
 

@@ -39,10 +39,35 @@ class MotionSendABB(object):
 		robt2 = robtarget([point2[0], point2[1], point2[2]], [ quat2[0], quat2[1], quat2[2], quat2[3]], confdata(cf2[0],cf2[1],cf2[2],cf2[3]),[0]*6)
 		return robt1, robt2
 
+	def moveC_target_relative(self,robot1,robot2,q1_1,q1_2,q2,point1,point2):
+		pose1_now=robot1.fwd(q1_1)
+		pose2_world_now=robot2.fwd(q2,world=True)
+		relative_R=pose2_world_now.R.T@pose1_now.R
+		quat=R2q(relative_R)
+		cf=quadrant(q1_1,robot1)
+		robt1 = robtarget([point1[0], point1[1], point1[2]], [ quat[0], quat[1], quat[2], quat[3]], confdata(cf[0],cf[1],cf[2],cf[3]),[9E+09]*6)
+
+
+		pose1_now=robot1.fwd(q1_2)
+		pose2_world_now=robot2.fwd(q2,world=True)
+		relative_R=pose2_world_now.R.T@pose1_now.R
+		quat=R2q(relative_R)
+		cf=quadrant(q1_2,robot1)
+		robt2 = robtarget([point2[0], point2[1], point2[2]], [quat[0], quat[1], quat[2], quat[3]], confdata(cf[0],cf[1],cf[2],cf[3]),[9E+09]*6)
+		return robt1, robt2
+
+
 	def moveJ_target(self,q):
 		q = np.rad2deg(q)
 		jointt = jointtarget([q[0],q[1],q[2],q[3],q[4],q[5]],[0]*6)
 		return jointt
+
+	def jog_joint_multimove(self,q1,q2):
+		mp1 = MotionProgram()
+		mp2 = MotionProgram()
+		mp1.MoveAbsJ(self.moveJ_target(q1),v200,fine)
+		mp2.MoveAbsJ(self.moveJ_target(q2),v200,fine)
+		self.client.execute_multimove_motion_program([mp1,mp2])
 
 	def exec_motions(self,robot,primitives,breakpoints,p_bp,q_bp,speed,zone):
 
@@ -124,10 +149,11 @@ class MotionSendABB(object):
 
 	def exec_motions_multimove(self,robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,speed1,speed2,zone1,zone2):
 		###dynamic speed2
-		
+
 		mp1 = MotionProgram(tool=tooldata(True,pose(robot1.p_tool,R2q(robot1.R_tool)),loaddata(1,[0,0,0.001],[1,0,0,0],0,0,0)))
 		mp2 = MotionProgram(tool=tooldata(True,pose(robot2.p_tool,R2q(robot2.R_tool)),loaddata(1,[0,0,0.001],[1,0,0,0],0,0,0)))
-
+		mp1.SyncMoveOn()
+		mp2.SyncMoveOn()
 		###change cirpath mode
 		mp1.CirPathMode(CirPathModeSwitch.ObjectFrame)
 		mp2.CirPathMode(CirPathModeSwitch.ObjectFrame)
@@ -251,15 +277,17 @@ class MotionSendABB(object):
 
 	def exec_motions_multimove_relative(self,robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,speed1,speed2,zone1,zone2):
 
-		wobj = wobjdata(False,False,"ROB_2",pose([0,0,0],[1,0,0,0]),pose([0,0,0],[0,0,1,0]))
+		wobj = wobjdata(False,False,"ROB_2",pose([0,0,0],[1,0,0,0]),pose(robot2.p_tool,R2q(robot2.R_tool)))
 
 		###dynamic speed2
 		mp1 = MotionProgram(tool=tooldata(True,pose(robot1.p_tool,R2q(robot1.R_tool)),loaddata(1,[0,0,0.001],[1,0,0,0],0,0,0)),wobj=wobj)
 		mp2 = MotionProgram(tool=tooldata(True,pose(robot2.p_tool,R2q(robot2.R_tool)),loaddata(1,[0,0,0.001],[1,0,0,0],0,0,0)))
-
+		mp1.SyncMoveOn()
+		mp2.SyncMoveOn()
+		
 		###change cirpath mode
-		mp1.CirPathMode(CirPathModeSwitch.ObjectFrame)
-		mp2.CirPathMode(CirPathModeSwitch.ObjectFrame)
+		# mp1.CirPathMode(CirPathModeSwitch.ObjectFrame)
+		# mp2.CirPathMode(CirPathModeSwitch.ObjectFrame)
 		
 		for i in range(len(primitives1)):
 
@@ -278,7 +306,7 @@ class MotionSendABB(object):
 
 
 			elif 'movec' in primitives1[i]:
-				robt1, robt2 = self.moveC_target_relative(robot1,robot2,q_bp1[i][0],q_bp1[i][1],p_bp1[i][0],p_bp1[i][1])
+				robt1, robt2 = self.moveC_target_relative(robot1,robot2,q_bp1[i][0],q_bp1[i][1],q_bp2[i][0],p_bp1[i][0],p_bp1[i][1])
 				if type(speed1) is list:
 					if type(zone1) is list:
 						mp1.MoveC(robt1,robt2,speed1[i],zone1[i])
@@ -371,14 +399,155 @@ class MotionSendABB(object):
 		mp1.WaitTime(0.1)
 		mp2.WaitTime(0.1)
 		
-		print(mp1.get_program_rapid())
-		print(mp2.get_program_rapid())
+		# print(mp1.get_program_rapid(module_name="TROB1_MODULE",sync_move=True))
+		# print(mp2.get_program_rapid(module_name="TROB2_MODULE", sync_move=True))
 		return self.client.execute_multimove_motion_program([mp1,mp2])
 
-
-	def extend(self,robot,q_bp,primitives,breakpoints,points_list,extension_start=100,extension_end=100):
+	def extend_relative(self,robot1,robot2,primitives,p_bp1,q_bp1,p_bp2,q_bp2,q2_init,q2_end,extension_start=100,extension_end=100):
+		###q2_init: original start of curve_js2, q2_end: original end of curve_js2
 		###initial point extension
-		pose_start=robot.fwd(q_bp[0][-1])
+		_,_,_,_,p_start,R_start=form_relative_path([q_bp1[0][0]],[q2_init],robot1,robot2)
+		_,_,_,_,p_end,R_end=form_relative_path([q_bp1[1][-1]],[q_bp2[1][-1]],robot1,robot2)
+
+		p_start,R_start,p_end,R_end=p_start[0],R_start[0],p_end[0],R_end[0]
+		if 'movel' in primitives[1]:
+			#find new start point
+			slope_p=p_end-p_start
+			slope_p=slope_p/np.linalg.norm(slope_p)
+			p_start_new=p_start-extension_start*slope_p        ###extend 5cm backward
+
+			#find new start orientation
+			k,theta=R2rot(R_end@R_start.T)
+			theta_new=-extension_start*theta/np.linalg.norm(p_end-p_start)
+			R_start_new=rot(k,theta_new)@R_start
+
+			#solve invkin for initial point
+			p_bp1[0][0]=p_start_new
+
+			pose2_world_init=robot2.fwd(q_bp2[0][0],world=True)
+			p_start_new_world=pose2_world_init.R@p_start_new+pose2_world_init.p
+			R_start_new_world=pose2_world_init.R@R_start_new
+			q_bp1[0][0]=car2js(robot1,q_bp1[0][0],p_start_new_world,R_start_new_world)[0]
+
+
+		elif 'movec' in primitives[1]:
+			##TODO: MOVEC IN RELATIVE EXTENSION FIX, ROBOT2 NO MIDPOINT
+			##TODO: proportional extension in relative motion
+			
+			#define circle first
+			_,_,_,_,p_mid,R_mid=form_relative_path([q_bp1[1][0]],[q_bp2[1][0]],robot1,robot2)
+			p_mid,R_mid=p_mid[0],R_mid[0]
+			center, radius=circle_from_3point(p_start,p_end,p_mid)
+
+			#find desired rotation angle
+			angle=extension_start/radius
+
+			#find new start point
+			plane_N=np.cross(p_end-center,p_start-center)
+			plane_N=plane_N/np.linalg.norm(plane_N)
+
+			R_temp=rot(plane_N,angle)
+			p_start_new=center+R_temp@(p_start-center)
+
+			#modify mid point to be in the middle of new start and old end (to avoid RS circle uncertain error)
+			modified_bp=arc_from_3point(p_start_new,p_end,p_mid,N=3)
+			p_bp1[1][0]=modified_bp[1]
+
+			#find new start orientation
+			k,theta=R2rot(R_end@R_start.T)
+			theta_new=-extension_start*theta/np.linalg.norm(p_end-p_start)
+			R_start_new=rot(k,theta_new)@R_start
+
+			#solve invkin for initial point
+			p_bp1[0][0]=p_start_new
+			pose2_world_init=robot2.fwd(q_bp2[0][0],world=True)
+			p_start_new_world=pose2_world_init.R@p_start_new+pose2_world_init.p
+			R_start_new_world=pose2_world_init.R@R_start_new
+			q_bp1[0][0]=car2js(robot1,q_bp1[0][0],p_start_new_world,R_start_new_world)[0]
+
+
+		else:
+			#find new start point
+			J_start=robot.jacobian(q_bp[0][0])
+			qdot=q_bp[0][0]-q_bp[1][0]
+			v=np.linalg.norm(J_start[3:,:]@qdot)
+			t=extension_start/v
+			q_bp1[0][0]=q_bp[0][0]+qdot*t
+			p_bp1[0][0]=robot.fwd(q_bp[0][0]).p
+
+		###end point extension
+		_,_,_,_,p_start,R_start=form_relative_path([q_bp1[-2][-1]],[q_bp2[-2][-1]],robot1,robot2)
+		_,_,_,_,p_end,R_end=form_relative_path([q_bp1[-1][-1]],[q2_end],robot1,robot2)
+		p_start,R_start,p_end,R_end=p_start[0],R_start[0],p_end[0],R_end[0]
+
+		if 'movel' in primitives[-1]:
+			#find new end point
+			slope_p=(p_end-p_start)/np.linalg.norm(p_end-p_start)
+			p_end_new=p_end+extension_end*slope_p        ###extend 5cm backward
+
+			#find new end orientation
+			k,theta=R2rot(R_end@R_start.T)
+			slope_theta=theta/np.linalg.norm(p_end-p_start)
+			R_end_new=rot(k,extension_end*slope_theta)@R_end
+
+			#solve invkin for end point
+			p_bp1[-1][0]=p_end_new			
+
+			pose2_world_end=robot2.fwd(q_bp2[-1][-1],world=True)
+			p_end_new_world=pose2_world_end.R@p_end_new+pose2_world_end.p
+			R_end_new_world=pose2_world_end.R@R_end_new
+			q_bp1[-1][0]=car2js(robot1,q_bp1[-1][0],p_end_new_world,R_end_new_world)[0]
+
+
+		elif  'movec' in primitives[-1]:
+			#define circle first
+			_,_,_,_,p_mid,R_mid=form_relative_path([q_bp1[-1][0]],[q_bp2[-1][0]],robot1,robot2)
+			p_mid,R_mid=p_mid[0],R_mid[0]
+			center, radius=circle_from_3point(p_start,p_end,p_mid)
+
+			#find desired rotation angle
+			angle=extension_end/radius
+
+			#find new end point
+			plane_N=np.cross(p_start-center,p_end-center)
+			plane_N=plane_N/np.linalg.norm(plane_N)
+			R_temp=rot(plane_N,angle)
+			p_end_new=center+R_temp@(p_end-center)
+
+			#modify mid point to be in the middle of new end and old start (to avoid RS circle uncertain error)
+			modified_bp=arc_from_3point(p_start,p_end_new,p_mid,N=3)
+			p_bp1[-1][0]=modified_bp[1]
+
+			#find new end orientation
+			k,theta=R2rot(R_end@R_start.T)
+			theta_new=extension_end*theta/np.linalg.norm(p_end-p_start)
+			R_end_new=rot(k,theta_new)@R_end
+
+			#solve invkin for end point
+			p_bp1[-1][-1]=p_end_new   #midpoint not changed
+			pose2_world_end=robot2.fwd(q_bp2[-1][-1],world=True)
+			p_end_new_world=pose2_world_end.R@p_end_new+pose2_world_end.p
+			R_end_new_world=pose2_world_end.R@R_end_new
+			q_bp1[-1][0]=car2js(robot1,q_bp1[-1][0],p_end_new_world,R_end_new_world)[0]
+
+		else:
+			#find new end point
+			J_end=robot.jacobian(q_bp1[-1][0])
+			qdot=q_bp1[-1][0]-q_bp1[-2][0]
+			v=np.linalg.norm(J_end[3:,:]@qdot)
+			t=extension_end/v
+			
+			q_bp1[-1][0]=q_bp1[-1][-1]+qdot*t
+			p_bp1[-1][0]=robot.fwd(q_bp1[-1][-1]).p
+
+		return p_bp1,q_bp1
+
+
+	def extend(self,robot,q_bp,primitives,breakpoints,p_bp,extension_start=100,extension_end=100):
+		p_bp_extended=copy.deepcopy(p_bp)
+		q_bp_extended=copy.deepcopy(q_bp)
+		###initial point extension
+		pose_start=robot.fwd(q_bp[0][0])
 		p_start=pose_start.p
 		R_start=pose_start.R
 		pose_end=robot.fwd(q_bp[1][-1])
@@ -396,8 +565,8 @@ class MotionSendABB(object):
 			R_start_new=rot(k,theta_new)@R_start
 
 			#solve invkin for initial point
-			points_list[0][0]=p_start_new
-			q_bp[0][0]=car2js(robot,q_bp[0][0],p_start_new,R_start_new)[0]
+			p_bp_extended[0][0]=p_start_new
+			q_bp_extended[0][0]=car2js(robot,q_bp[0][0],p_start_new,R_start_new)[0]
 
 		elif 'movec' in primitives[1]:
 			#define circle first
@@ -418,7 +587,7 @@ class MotionSendABB(object):
 
 			#modify mid point to be in the middle of new start and old end (to avoid RS circle uncertain error)
 			modified_bp=arc_from_3point(p_start_new,p_end,p_mid,N=3)
-			points_list[1][0]=modified_bp[1]
+			p_bp_extended[1][0]=modified_bp[1]
 
 			#find new start orientation
 			k,theta=R2rot(R_end@R_start.T)
@@ -426,8 +595,8 @@ class MotionSendABB(object):
 			R_start_new=rot(k,theta_new)@R_start
 
 			#solve invkin for initial point
-			points_list[0][0]=p_start_new
-			q_bp[0][0]=car2js(robot,q_bp[0][0],p_start_new,R_start_new)[0]
+			p_bp_extended[0][0]=p_start_new
+			q_bp_extended[0][0]=car2js(robot,q_bp[0][0],p_start_new,R_start_new)[0]
 
 
 		else:
@@ -436,8 +605,8 @@ class MotionSendABB(object):
 			qdot=q_bp[0][0]-q_bp[1][0]
 			v=np.linalg.norm(J_start[3:,:]@qdot)
 			t=extension_start/v
-			q_bp[0][0]=q_bp[0][0]+qdot*t
-			points_list[0][0]=robot.fwd(q_bp[0][0]).p
+			q_bp_extended[0][0]=q_bp[0][0]+qdot*t
+			p_bp_extended[0][0]=robot.fwd(q_bp_extended[0][0]).p
 
 		###end point extension
 		pose_start=robot.fwd(q_bp[-2][-1])
@@ -458,8 +627,8 @@ class MotionSendABB(object):
 			R_end_new=rot(k,extension_end*slope_theta)@R_end
 
 			#solve invkin for end point
-			q_bp[-1][0]=car2js(robot,q_bp[-1][0],p_end_new,R_end_new)[0]
-			points_list[-1][0]=p_end_new
+			q_bp_extended[-1][0]=car2js(robot,q_bp[-1][0],p_end_new,R_end_new)[0]
+			p_bp_extended[-1][0]=p_end_new
 
 
 		elif  'movec' in primitives[-1]:
@@ -480,7 +649,7 @@ class MotionSendABB(object):
 
 			#modify mid point to be in the middle of new end and old start (to avoid RS circle uncertain error)
 			modified_bp=arc_from_3point(p_start,p_end_new,p_mid,N=3)
-			points_list[-1][0]=modified_bp[1]
+			p_bp_extended[-1][0]=modified_bp[1]
 
 			#find new end orientation
 			k,theta=R2rot(R_end@R_start.T)
@@ -488,8 +657,8 @@ class MotionSendABB(object):
 			R_end_new=rot(k,theta_new)@R_end
 
 			#solve invkin for end point
-			q_bp[-1][-1]=car2js(robot,q_bp[-1][-1],p_end_new,R_end_new)[0]
-			points_list[-1][-1]=p_end_new   #midpoint not changed
+			q_bp_extended[-1][-1]=car2js(robot,q_bp[-1][-1],p_end_new,R_end_new)[0]
+			p_bp_extended[-1][-1]=p_end_new   #midpoint not changed
 
 		else:
 			#find new end point
@@ -498,22 +667,29 @@ class MotionSendABB(object):
 			v=np.linalg.norm(J_end[3:,:]@qdot)
 			t=extension_end/v
 			
-			q_bp[-1][0]=q_bp[-1][-1]+qdot*t
-			points_list[-1][0]=robot.fwd(q_bp[-1][-1]).p
+			q_bp_extended[-1][0]=q_bp[-1][-1]+qdot*t
+			p_bp_extended[-1][0]=robot.fwd(q_bp_extended[-1][-1]).p
 
-		return points_list,q_bp
+		return p_bp_extended,q_bp_extended
 
-	def extend_dual(self,robot1,p_bp1,q_bp1,primitives1,robot2,p_bp2,q_bp2,primitives2,breakpoints,extension_start2=100,extension_end2=100):
+	def extend_dual(self,robot1,p_bp1,q_bp1,primitives1,robot2,p_bp2,q_bp2,primitives2,breakpoints,extension_start2=100,extension_end2=100,relative=False):
 		#extend porpotionally
 		d1_start=np.linalg.norm(p_bp1[1][-1]-p_bp1[0][-1])
 		d2_start=np.linalg.norm(p_bp2[1][-1]-p_bp2[0][-1])
 		d1_end=np.linalg.norm(p_bp1[-1][-1]-p_bp1[-2][-1])
 		d2_end=np.linalg.norm(p_bp2[-1][-1]-p_bp2[-2][-1])
 
-		p_bp1,q_bp1=self.extend(robot1,q_bp1,primitives1,breakpoints,p_bp1,extension_start=extension_start2*d1_start/d2_start,extension_end=extension_end2*d1_end/d2_end)
-		p_bp2,q_bp2=self.extend(robot2,q_bp2,primitives2,breakpoints,p_bp2,extension_start=extension_start2,extension_end=extension_end2)
+		q2_init=copy.deepcopy(q_bp2[0][0])
+		q2_end=copy.deepcopy(q_bp2[-1][-1])
 
-		return p_bp1,q_bp1,p_bp2,q_bp2
+		p_bp2_extended,q_bp2_extended=self.extend(robot2,q_bp2,primitives2,breakpoints,p_bp2,extension_start=extension_start2,extension_end=extension_end2)
+		
+		if relative:
+			p_bp1_extended,q_bp1_extended=self.extend_relative(robot1,robot2,primitives1,p_bp1,q_bp1,p_bp2,q_bp2,q2_init,q2_end,extension_start=extension_start2*d1_start/d2_start,extension_end=extension_end2*d1_end/d2_end)
+		else:
+			p_bp1_extended,q_bp1_extended=self.extend(robot1,q_bp1,primitives1,breakpoints,p_bp1,extension_start=extension_start2*d1_start/d2_start,extension_end=extension_end2*d1_end/d2_end)
+
+		return p_bp1_extended,q_bp1_extended,p_bp2_extended,q_bp2_extended
 	def extract_data_from_cmd(self,filename):
 		data = read_csv(filename)
 		breakpoints=np.array(data['breakpoints'].tolist())
@@ -572,8 +748,8 @@ class MotionSendABB(object):
 		start_idx=np.where(cmd_num==cmd_num[idx])[0][0]
 		curve_exe_js=np.radians(log_results.data[start_idx:,2:])
 		timestamp=log_results.data[start_idx:,0]
-		if realrobot:
-			timestamp, curve_exe_js=lfilter(timestamp, curve_exe_js)
+		###filter noise
+		timestamp, curve_exe_js=lfilter(timestamp, curve_exe_js)
 
 		speed=[0]
 		lam=[0]
