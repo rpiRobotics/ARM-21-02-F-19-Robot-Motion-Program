@@ -591,6 +591,11 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
     breakpoints1,primitives1,p_bp1,q_bp1=ms.extract_data_from_cmd(filepath+'/command1.csv')
     breakpoints2,primitives2,p_bp2,q_bp2=ms.extract_data_from_cmd(filepath+'/command2.csv')
 
+    ###realrobot, no extension, use result from simulation output directly
+    # if not realrobot:
+    p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(robot1,p_bp1,q_bp1,primitives1,robot2,p_bp2,q_bp2,primitives2,breakpoints1,extension_start2=extstart,extension_end2=extend)
+
+
     ###get lambda at each breakpoint
     lam_bp=lam_relative_path[np.append(breakpoints1[0],breakpoints1[1:]-1)]
 
@@ -601,7 +606,7 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         # v2_all.append(v5000)
 
     
-    p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(robot1,p_bp1,q_bp1,primitives1,robot2,p_bp2,q_bp2,primitives2,breakpoints1)
+    
 
     ilc=ilc_toolbox([robot1,robot2],[primitives1,primitives2])
 
@@ -635,6 +640,7 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         std_speed=np.std(speed)
         ##############################calcualte error########################################
         error,angle_error=calc_all_error_w_normal(relative_path_exe,relative_path[:,:3],relative_path_exe_R[:,:,-1],relative_path[:,3:])
+
         print('Iteration:',i,', Max Error:',max(error),'Ave. Speed:',ave_speed,'Std. Speed:',np.std(speed),'Std/Ave (%):',np.std(speed)/ave_speed*100)
         print('Max Speed:',max(speed),'Min Speed:',np.min(speed),'Ave. Error:',np.mean(error),'Min Error:',np.min(error),"Std. Error:",np.std(error))
         print('Max Ang Error:',max(np.degrees(angle_error)),'Min Ang Error:',np.min(np.degrees(angle_error)),'Ave. Ang Error:',np.mean(np.degrees(angle_error)),"Std. Ang Error:",np.std(np.degrees(angle_error)))
@@ -660,14 +666,14 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
             draw_speed_max=max(speed)*1.05
         ax1.axis(ymin=0,ymax=draw_speed_max)
         if draw_error_max is None:
-            draw_error_max=max(error)*1.05
+            draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
         if max(error) >= draw_error_max or max(error) < draw_error_max*0.1:
-            draw_error_max=max(error)*1.05
+            draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
         ax2.axis(ymin=0,ymax=draw_error_max)
         ax1.set_xlabel('lambda (mm)')
         ax1.set_ylabel('Speed/lamdot (mm/s)', color='g')
         ax2.set_ylabel('Error/Normal Error (mm/deg)', color='b')
-        plt.title("Speed and Error Plot")
+        plt.title("Iteration "+str(i)+": Speed and Error Plot")
         h1, l1 = ax1.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
         ax1.legend(h1+h2, l1+l2, loc=1)
@@ -698,16 +704,16 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         ###########################plot for verification###################################
         # p_bp_relative,_=ms.form_relative_path(np.squeeze(q_bp1),np.squeeze(q_bp2),base2_R,base2_p)
 
-        if max(error)>max_error and error_localmin_flag:
+        if max(error)>1.1*max_error and error_localmin_flag:
             print("Can't decrease anymore")
             break
 
-        if max(error)>max_error:
+        if max(error)>1.1*max_error:
             print("Use grad")
             error_localmin_flag=True
             use_grad=True
         
-        if max(error)<max_error:
+        if max(error)<1.1*max_error:
             error_localmin_flag=False
 
         max_error=max(error)
