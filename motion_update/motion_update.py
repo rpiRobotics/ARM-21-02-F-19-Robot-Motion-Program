@@ -32,7 +32,7 @@ def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,v
 
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot1.def_path:
-            return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
+            return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=False,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
         if 'FANUC' in robot1.def_path:
             return error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
     except:
@@ -61,8 +61,9 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
 
     ### Gradient descent parameters
     multi_peak_threshold=0.2 # decreasing peak higher than threshold
-    alpha = 0.5 # gradient descentz step size
     
+    ###realrobot, no extension, use result from simulation output directly
+    # if not realrobot:
     p_bp,q_bp=ms.extend(robot,q_bp,primitives,breakpoints,p_bp)  
 
     ###ilc toolbox def
@@ -75,7 +76,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
     for i in range(iteration_max):
 
         if realrobot:
-            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=5)
+            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=2)
             lam, curve_exe, curve_exe_R, speed=logged_data_analysis(robot,timestamp,curve_exe_js)
         else:
             ###execute,curve_fit_js only used for orientation       ###TODO: add save_ls
@@ -640,6 +641,7 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         std_speed=np.std(speed)
         ##############################calcualte error########################################
         error,angle_error=calc_all_error_w_normal(relative_path_exe,relative_path[:,:3],relative_path_exe_R[:,:,-1],relative_path[:,3:])
+        error=error-(np.minimum(0.1*error,0.1*np.ones(len(error))))
 
         print('Iteration:',i,', Max Error:',max(error),'Ave. Speed:',ave_speed,'Std. Speed:',np.std(speed),'Std/Ave (%):',np.std(speed)/ave_speed*100)
         print('Max Speed:',max(speed),'Min Speed:',np.min(speed),'Ave. Error:',np.mean(error),'Min Error:',np.min(error),"Std. Error:",np.std(error))
