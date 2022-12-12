@@ -660,11 +660,38 @@ class m10ia(object):
 
 	def jacobian(self,q):
 		return robotjacobian(self.robot_def,q)
-	def fwd(self,q,base_R=np.eye(3),base_p=np.array([0,0,0])):
-		pose_temp=fwdkin(self.robot_def,q)
-		pose_temp.p=np.dot(base_R,pose_temp.p)+base_p
-		pose_temp.R=np.dot(base_R,pose_temp.R)
-		return pose_temp
+	# def fwd(self,q,base_R=np.eye(3),base_p=np.array([0,0,0])):
+	# 	pose_temp=fwdkin(self.robot_def,q)
+	# 	pose_temp.p=np.dot(base_R,pose_temp.p)+base_p
+	# 	pose_temp.R=np.dot(base_R,pose_temp.R)
+	# 	return pose_temp
+	
+	def fwd(self,q_all,world=False,qlim_override=False):
+		###robot forworld kinematics
+		#q_all:			robot joint angles or list of robot joint angles
+		#world:			bool, if want to get coordinate in world frame or robot base frame
+		q_all=np.array(q_all)
+		if q_all.ndim==1:
+			q=q_all
+			pose_temp=fwdkin(self.robot_def,q)
+
+			if world:
+				pose_temp.p=self.base_H[:3,:3]@pose_temp.p+self.base_H[:3,-1]
+				pose_temp.R=self.base_H[:3,:3]@pose_temp.R
+			return pose_temp
+		else:
+			pose_p_all=[]
+			pose_R_all=[]
+			for q in q_all:
+				pose_temp=fwdkin(self.robot_def,q)
+				if world:
+					pose_temp.p=self.base_H[:3,:3]@pose_temp.p+self.base_H[:3,-1]
+					pose_temp.R=self.base_H[:3,:3]@pose_temp.R
+
+				pose_p_all.append(pose_temp.p)
+				pose_R_all.append(pose_temp.R)
+
+			return Transform_all(pose_p_all,pose_R_all)
 	
 	def fwd_j456(self,q):
 		if (self.robot_def.joint_lower_limit is not None and self.robot_def.joint_upper_limit is not None):

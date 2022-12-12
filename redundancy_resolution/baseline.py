@@ -55,11 +55,13 @@ def find_js(robot,curve,curve_normal):
 	###get R first 
 	curve_R=[]
 	for i in range(len(curve)-1):
-		R_curve=direction2R(curve_normal[i],-curve[i+1]+curve[i])	
+		# R_curve=direction2R(curve_normal[i],-curve[i+1]+curve[i])	
+		R_curve=direction2R_Y(curve_normal[i],curve[i+1]-curve[i])	
 		curve_R.append(R_curve)
 
 	###insert initial orientation
 	curve_R.insert(0,curve_R[0])
+	print(curve_R[0])
 
 	###get all possible initial config
 	try:
@@ -72,6 +74,7 @@ def find_js(robot,curve,curve_normal):
 	# print(np.degrees(q_inits))
 	curve_js_all=[]
 	for q_init in q_inits:
+		print(np.degrees(q_init))
 		curve_js=np.zeros((len(curve),6))
 		curve_js[0]=q_init
 		for i in range(1,len(curve)):
@@ -81,11 +84,14 @@ def find_js(robot,curve,curve_normal):
 				print(i)
 				print(np.degrees(curve_js[i-1]))
 				print('no solution available')
-				return
+				break
 
 			temp_q=q_all-curve_js[i-1]
 			order=np.argsort(np.linalg.norm(temp_q,axis=1))
 			if np.linalg.norm(q_all[order[0]]-curve_js[i-1])>0.5:
+				print("large change",i)
+				print(np.degrees(q_all))
+				print(np.degrees(curve_js[i-1]))
 				break	#if large changes in q
 			else:
 				curve_js[i]=q_all[order[0]]
@@ -96,5 +102,5 @@ def find_js(robot,curve,curve_normal):
 
 	return curve_js_all
 
-if __name__ == "__main__":
-	main()
+# if __name__ == "__main__":
+# 	main()

@@ -2,33 +2,93 @@ from .baseline import *
 from .constraint_solver import *
 
 import numpy as np
+from fanuc_motion_program_exec_client import *
 
 def redundancy_resolution_baseline(filename, robot):
 
     ## fanuc has different joint rotation axis
-    if 'FANUC' in robot.robot_name:
-        robot.j_compensation=np.array([1,1,1,1,1,1])
+    # if 'FANUC' in robot.robot_name:
+    #     robot.j_compensation=np.array([1,1,1,1,1,1])
 
     curve = np.loadtxt(filename,delimiter=',')
     H = pose_opt(robot,curve[:,:3],curve[:,3:])
+    print(H)
+    print(R2wpr(H[:3,:3]))
+    # # return
+    # H=np.array(H)
+    # H[:3,:3]=H[:3,:3]@rot([1,0,0],np.radians(180))
+    # H[2,-1]=H[2,-1]+250
+    # print(H)
     curve_base,curve_normal_base=curve_frame_conversion(curve[:,:3],curve[:,3:],H)
-    curve_js_all=find_js(robot,curve_base,curve_normal_base)
+    
+    # curve_js_all=find_js(robot,curve_base,curve_normal_base)
 
-    if len(curve_js_all) > 0:
-        J_min=[]
-        for i in range(len(curve_js_all)):
-            J_min.append(find_j_min(robot,curve_js_all[i]))
+    # if len(curve_js_all) > 0:
+    #     J_min=[]
+    #     for i in range(len(curve_js_all)):
+    #         J_min.append(find_j_min(robot,curve_js_all[i]))
 
-        J_min=np.array(J_min)
-        curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
-    else:
-        curve_js=[]
+    #     J_min=np.array(J_min)
+    #     curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
+    # else:
+    #     curve_js=[]
 
-    if 'FANUC' in robot.robot_name:
-        curve_js[:,2:]=-1*curve_js[:,2:]
-        robot.j_compensation=np.array([1,1,-1,-1,-1,-1])
+    curve_js=[]
+    if len(curve_js)==0:
+        print("Us QP")
+        curve_js=redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base)
+
+    # if 'FANUC' in robot.robot_name:
+    #     curve_js[:,2:]=-1*curve_js[:,2:]
+    #     robot.j_compensation=np.array([1,1,-1,-1,-1,-1])
 
     return curve_base,curve_normal_base,curve_js,H
+
+def redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base):
+
+    opt=lambda_opt(curve_base,curve_normal_base,robot1=robot,steps=50000,v_cmd=500)
+
+    ###get R first 
+    curve_R=[]
+    for i in range(len(curve_base)-1):
+        # R_curve=direction2R(curve_normal[i],-curve[i+1]+curve[i])	
+        R_curve=direction2R_Y(curve_normal_base[i],curve_base[i+1]-curve_base[i])	
+        curve_R.append(R_curve)
+
+    ###insert initial orientation
+    curve_R.insert(0,curve_R[0])
+
+    ###get all possible initial config
+    try:
+        q_inits=np.array(robot.inv(curve_base[0],curve_R[0]))
+        q1_candidate=[]
+        for q in q_inits:
+            if q[2]<=np.pi/2:
+                q1_candidate.append(q)
+        if len(q1_candidate)>0:
+            q1_4_dist=9999
+            for q in q1_candidate:
+                if np.fabs(q[3])<q1_4_dist:
+                    q1_4_dist=np.fabs(q[3])
+                    q_init=copy.deepcopy(q)
+        else:
+            q1_4_dist=9999
+            for q in q_inits:
+                if np.fabs(q[3])<q1_4_dist:
+                    q1_4_dist=np.fabs(q[3])
+                    q_init=copy.deepcopy(q)
+    except:
+        traceback.print_exc()
+        print('no solution available')
+        return
+
+    print(np.degrees(q_init))
+    try:
+        curve_js=opt.single_arm_stepwise_optimize(q_init,curve_base,curve_normal_base)
+    except:
+        curve_js=[]
+
+    return curve_js
 
 def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd=1000):
     print(baseline_pose_filename)

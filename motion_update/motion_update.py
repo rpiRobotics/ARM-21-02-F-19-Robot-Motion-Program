@@ -14,9 +14,9 @@ def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_cu
         curve_js=np.array(curve_js)
 
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
-        if 'ABB' in robot.def_path:
+        if 'ABB' in robot.robot_name:
             return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=realrobot)
-        if 'FANUC' in robot.def_path:
+        if 'FANUC' in robot.robot_name:
             return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot)
     except:
         traceback.print_exc()
@@ -31,9 +31,9 @@ def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,v
         curve_js2 = np.array(read_csv(desired_curvejs2_filename,header=None).values)
 
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
-        if 'ABB' in robot1.def_path:
+        if 'ABB' in robot1.robot_name:
             return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
-        if 'FANUC' in robot1.def_path:
+        if 'FANUC' in robot1.robot_name:
             return error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
     except:
         traceback.print_exc()
@@ -204,12 +204,16 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
     curve=desired_curve
     curve_js=desired_curve_js
 
-    ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
+    if realrobot:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'_realrobot/'
+    else:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
     Path(ilc_output).mkdir(exist_ok=True)
 
-    ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot)
+    # ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot)
+    ms = robotMotionSend(group=1,uframe=1,utool=3,robot_ip=robot_ip,robot1=robot)
 
-    breakpoints,primitives,p_bp,q_bp=ms.extract_data_from_cmd(filepath+'/command.csv')
+    breakpoints,primitives,p_bp,q_bp,_=ms.extract_data_from_cmd(filepath+'/command.csv')
 
     alpha = 0.5 # for gradient descent
     alpha_error_dir = 0.8 # for pushing in error direction
@@ -272,7 +276,9 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
             draw_speed_max=max(speed)*1.05
         ax1.axis(ymin=0,ymax=draw_speed_max)
         if draw_error_max is None:
-            draw_error_max=max(error)*1.05
+            draw_error_max=max(np.append(error,np.degrees(angle_error)))*1.05
+        if max(np.append(error,np.degrees(angle_error))) >= draw_error_max or max(np.append(error,np.degrees(angle_error))) < draw_error_max*0.1:
+            draw_error_max=max(np.append(error,np.degrees(angle_error)))*1.05
         ax2.axis(ymin=0,ymax=draw_error_max)
 
         ax1.set_xlabel('lambda (mm)')
@@ -300,6 +306,7 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
         if save_all_file:
             df=DataFrame({'primitives':primitives,'points':p_bp,'q_bp':q_bp})
             df.to_csv(ilc_output+'command_'+str(i)+'.csv',header=True,index=False)
+            DataFrame(curve_exe_js).to_csv(ilc_output+'js_exe_'+str(i)+'.csv',header=False,index=False)
             DataFrame(curve_exe_js).to_csv(ilc_output+'curve_js_exe.csv',header=False,index=False)
             np.save(ilc_output+'final_speed.npy',speed)
             np.save(ilc_output+'final_error.npy',error)
@@ -374,7 +381,8 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
     base2_p=base2_T[:3,-1]
 
     # fanuc motion send tool
-    ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
+    # ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
+    ms = robotMotionSend(group=1,uframe=1,utool=3,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
     
     s=velocity # mm/sec in leader frame
     z=100 # CNT100
@@ -399,7 +407,7 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
 
         if realrobot:
             lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe, relative_path_exe_R = \
-                average_N_exe_multimove_fanuc(ms,robot1,robot2,base2_R,base2_p,primitives1,primitives2,breakpoints1,p_bp1,p_bp2,q_bp1,q_bp2,s,z,log_path='',N=2)
+                average_N_exe_multimove_fanuc(ms,robot1,robot2,base2_R,base2_p,primitives1,primitives2,breakpoints1,p_bp1,p_bp2,q_bp1,q_bp2,s,z,log_path='',N=5)
         else:
             ###execution with plant
             logged_data=ms.exec_motions_multimove(robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,s,z)
@@ -441,9 +449,9 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
             draw_speed_max=max(speed)*1.05
         ax1.axis(ymin=0,ymax=draw_speed_max)
         if draw_error_max is None:
-            draw_error_max=max(error)*1.05
-        if max(error) >= draw_error_max or max(error) < draw_error_max*0.1:
-            draw_error_max=max(error)*1.05
+            draw_error_max=max(np.append(error,np.degrees(angle_error)))*1.05
+        if max(np.append(error,np.degrees(angle_error))) >= draw_error_max or max(np.append(error,np.degrees(angle_error))) < draw_error_max*0.1:
+            draw_error_max=max(np.append(error,np.degrees(angle_error)))*1.05
         ax2.axis(ymin=0,ymax=draw_error_max)
         ax1.set_xlabel('lambda (mm)')
         ax1.set_ylabel('Speed/lamdot (mm/s)', color='g')
@@ -470,6 +478,8 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
             df.to_csv(ilc_output+'command_arm1_'+str(i)+'.csv',header=True,index=False)
             df=DataFrame({'primitives':primitives2,'points':p_bp2,'q_bp':q_bp2})
             df.to_csv(ilc_output+'command_arm2_'+str(i)+'.csv',header=True,index=False)
+            DataFrame(curve_exe_js1).to_csv(ilc_output+'js1_exe_'+str(i)+'.csv',header=False,index=False)
+            DataFrame(curve_exe_js2).to_csv(ilc_output+'js2_exe_'+str(i)+'.csv',header=False,index=False)
             DataFrame(curve_exe_js1).to_csv(ilc_output+'curve_js1_exe.csv',header=False,index=False)
             DataFrame(curve_exe_js2).to_csv(ilc_output+'curve_js2_exe.csv',header=False,index=False)
             np.save(ilc_output+'final_speed.npy',speed)

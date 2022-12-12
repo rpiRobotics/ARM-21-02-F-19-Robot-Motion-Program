@@ -74,6 +74,15 @@ def direction2R(v_norm,v_tang):
 
 	return R
 
+def direction2R_Y(v_norm,v_tang):
+	v_norm=v_norm/np.linalg.norm(v_norm)
+	v_tang=VectorPlaneProjection(v_tang,v_norm)
+	x=np.cross(v_tang,v_norm)
+
+	R=np.vstack((x,v_tang,v_norm)).T
+
+	return R
+
 def LinePlaneCollision(planeNormal, planePoint, rayDirection, rayPoint, epsilon=1e-6):
  
 	ndotu = planeNormal.dot(rayDirection)

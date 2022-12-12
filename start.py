@@ -120,12 +120,13 @@ class SprayGUI(QDialog):
         self.robot_ip='127.0.0.1'
         self.realrobot=False
         ###tesseract visualizer
-        try:
-            self.tes_env=Tess_Env('config/urdf/')
-        except Exception as e:
-            print(e)
-            print("Start without tesseract visualizer")
-            self.tes_env=None
+        # try:
+        #     self.tes_env=Tess_Env('config/urdf/')
+        # except Exception as e:
+        #     print(e)
+        #     print("Start without tesseract visualizer")
+        #     self.tes_env=None
+        self.tes_env=None
 
         # robot box
         robot_list=['','FANUC_m710ic','FANUC_m900ia','FANUC_m10ia','FANUC_lrmate200id','ABB_1200_5_90','ABB_6640_180_255']
@@ -239,7 +240,15 @@ class SprayGUI(QDialog):
             if 'ABB' in robot1_choose:
                 self.robot1MotionSend=MotionSendABB             ###TODO: add realrobot argument (IP, repeatibility)
             elif 'FANUC' in robot1_choose:
-                self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                # self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                ##### ugly cheat
+                robot_flange=Transform(Ry(np.pi/2)@Rz(np.pi),[0,0,0])
+                robot_tcp=Transform(wpr2R([-89.895,84.408,-67.096]),[316.834,0.39,5.897])
+                robot_flange_tcp=robot_flange*robot_tcp
+                self.robot1=m10ia(R_tool=robot_flange_tcp.R,p_tool=robot_flange_tcp.p,d=0,acc_dict_path='config/FANUC_m10ia_acc.pickle')
+                self.robot1.robot_name=robot1_choose
+                ################
+                
                 self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)           
                 # self.robot1=m10ia(d=50)
         self.robot1_name=robot1_choose
@@ -497,6 +506,7 @@ class SprayGUI(QDialog):
                     self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.robot1_name+'_'+self.robot2_name+'/tcp_workpiece.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
                 elif 'FANUC' in self.robot2_name:
                     self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=self.robot1_name+'_'+self.robot2_name+'/tcp_workpiece.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+            
             except Exception as e:
                 print(e)
                 return
@@ -550,7 +560,7 @@ class SprayGUI(QDialog):
         np.savetxt(save_filepath+'curve_pose.csv',H,delimiter=',')
 
         if len(curve_js) > 0:
-            DataFrame(curve_js).to_csv(save_filepath+'Curve_js.csv',header=False,index=False)
+            DataFrame(curve_js).to_csv(save_filepath+'Curve_js1.csv',header=False,index=False)
             self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
         else:
             self.run1_result.setText('Redundancy Resolution. No JS Solution. \nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
@@ -571,7 +581,7 @@ class SprayGUI(QDialog):
             df.to_csv(save_filepath+'Curve_in_base_frame.csv',header=False,index=False)
             np.savetxt(save_filepath+'curve_pose.csv',H,delimiter=',')
             if len(curve_js) > 0:
-                DataFrame(curve_js).to_csv(save_filepath+'Curve_js.csv',header=False,index=False)
+                DataFrame(curve_js).to_csv(save_filepath+'Curve_js1.csv',header=False,index=False)
                 self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             else:
                 self.run1_result.setText('Redundancy Resolution. No JS Solution. \nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
