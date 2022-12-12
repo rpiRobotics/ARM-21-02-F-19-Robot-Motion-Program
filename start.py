@@ -119,6 +119,7 @@ class SprayGUI(QDialog):
 
         self.robot_ip='127.0.0.1'
         self.realrobot=False
+        self.sim_result=False
         ###tesseract visualizer
         try:
             self.tes_env=Tess_Env('config/urdf/')
@@ -165,6 +166,10 @@ class SprayGUI(QDialog):
         self.realrobot_button.setDefault(False)
         self.realrobot_button.clicked.connect(self.changeColor)
 
+        ### Simulation Result Activation
+        self.sim_result_box=QCheckBox("Taking Simulation Result")
+        self.sim_result_box.setChecked(False)
+
         ## Redundancy Resolution Box
         self.redundancyResLeft()
         ## Motion Program Generation Box
@@ -185,6 +190,7 @@ class SprayGUI(QDialog):
         self.toplayout.addWidget(ip_set_button)
         self.toplayout.addWidget(self.dualRobot_box)
         self.toplayout.addWidget(self.realrobot_button)
+        self.toplayout.addWidget(self.sim_result_box)
 
         ## main layout
         self.mainLayout = QGridLayout()
@@ -1059,7 +1065,7 @@ class SprayGUI(QDialog):
         try:    ###TODO: add error box popup
             if not self.dualRobot_box.isChecked():
                 self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot)
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,self.sim_result_box.isChecked())
             else:
                 if self.robot2_name is None:
                     self.run4_result.setText("Robot2 not yet choosed.")
@@ -1076,7 +1082,7 @@ class SprayGUI(QDialog):
                     utool2=int(self.utool2_box.value())
                 #################################
                 self.moupdate_worker=Worker(motion_program_update_dual,self.cmd_pathname,self.robot1,self.robot2,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,self.des_curvejs2_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,utool2)
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,self.sim_result_box.isChecked(),utool2)
             
             self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
                 setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\

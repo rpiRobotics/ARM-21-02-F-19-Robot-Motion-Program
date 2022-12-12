@@ -6,7 +6,7 @@ import traceback
 from copy import deepcopy
 
 def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs_filename,\
-    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot):
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,sim_result=False):
     try:
         curve = read_csv(desired_curve_filename,header=None).values
         curve=np.array(curve)
@@ -15,14 +15,14 @@ def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_cu
 
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot.def_path:
-            return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=realrobot)
+            return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=realrobot,sim_result=sim_result)
         if 'FANUC' in robot.def_path:
             return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot)
     except:
         traceback.print_exc()
 
 def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs1_filename,desired_curvejs2_filename,\
-    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,utool2=None):
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,sim_result=False,utool2=None):
 
     try:
         curve = read_csv(desired_curve_filename,header=None).values
@@ -33,14 +33,14 @@ def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,v
         ###ABB: save_all_file to False may FREEZE?
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot1.def_path:
-            return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
+            return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2,sim_result=sim_result)
         if 'FANUC' in robot1.def_path:
             return error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
     except:
         traceback.print_exc()
 
 def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',realrobot=False):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',realrobot=False,sim_result=False):
 
     curve=desired_curve
     curve_js=desired_curve_js
@@ -67,9 +67,9 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
     ### Gradient descent parameters
     multi_peak_threshold=0.2 # decreasing peak higher than threshold
     
-    ###realrobot, no extension, use result from simulation output directly
-    # if not realrobot:
-    p_bp,q_bp=ms.extend(robot,q_bp,primitives,breakpoints,p_bp)  
+    ###use result from simulation output directly
+    if not sim_result:
+        p_bp,q_bp=ms.extend(robot,q_bp,primitives,breakpoints,p_bp)  
 
     ###ilc toolbox def
     ilc=ilc_toolbox(robot,primitives)
@@ -81,7 +81,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
     for i in range(iteration_max):
 
         if realrobot:
-            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=2)
+            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=5)
             lam, curve_exe, curve_exe_R, speed=logged_data_analysis(robot,timestamp,curve_exe_js)
         else:
             ###execute,curve_fit_js only used for orientation       ###TODO: add save_ls
@@ -577,7 +577,7 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
 
 
 def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,velocity,desired_curve,curve_js1,curve_js2,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False,utool2=2):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False,utool2=2,sim_result=False):
 
     ## desired curve
     relative_path=desired_curve
@@ -601,9 +601,9 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
     breakpoints1,primitives1,p_bp1,q_bp1=ms.extract_data_from_cmd(filepath+'/command1.csv')
     breakpoints2,primitives2,p_bp2,q_bp2=ms.extract_data_from_cmd(filepath+'/command2.csv')
 
-    ###realrobot, no extension, use result from simulation output directly
-    # if not realrobot:
-    p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(robot1,p_bp1,q_bp1,primitives1,robot2,p_bp2,q_bp2,primitives2,breakpoints1,extension_start2=extstart,extension_end2=extend)
+    ###use result from simulation output directly
+    if not sim_result:
+        p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(robot1,p_bp1,q_bp1,primitives1,robot2,p_bp2,q_bp2,primitives2,breakpoints1,extension_start2=extstart,extension_end2=extend)
 
 
     ###get lambda at each breakpoint
