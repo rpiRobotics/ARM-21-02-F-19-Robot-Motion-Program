@@ -30,9 +30,10 @@ def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,v
         curve_js1 = np.array(read_csv(desired_curvejs1_filename,header=None).values)
         curve_js2 = np.array(read_csv(desired_curvejs2_filename,header=None).values)
 
+        ###ABB: save_all_file to False may FREEZE?
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot1.def_path:
-            return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=False,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
+            return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
         if 'FANUC' in robot1.def_path:
             return error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
     except:
@@ -44,7 +45,11 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
     curve=desired_curve
     curve_js=desired_curve_js
 
-    ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
+    if realrobot:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'_realrobot/'
+    else:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
+
     Path(ilc_output).mkdir(exist_ok=True)
 
     ms = robotMotionSend('http://'+robot_ip+':80')
@@ -122,7 +127,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
         ax1.set_xlabel('lambda (mm)')
         ax1.set_ylabel('Speed/lamdot (mm/s)', color='g')
         ax2.set_ylabel('Error/Normal Error (mm/deg)', color='b')
-        plt.title("Speed and Error Plot")
+        plt.title("Iteration "+str(i)+": Speed and Error Plot")
 
         h1, l1 = ax1.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
@@ -205,7 +210,11 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
     curve=desired_curve
     curve_js=desired_curve_js
 
-    ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
+    if realrobot:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'_realrobot/'
+    else:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
+        
     Path(ilc_output).mkdir(exist_ok=True)
 
     ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot)
@@ -641,7 +650,6 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         std_speed=np.std(speed)
         ##############################calcualte error########################################
         error,angle_error=calc_all_error_w_normal(relative_path_exe,relative_path[:,:3],relative_path_exe_R[:,:,-1],relative_path[:,3:])
-        error=error-(np.minimum(0.1*error,0.1*np.ones(len(error))))
 
         print('Iteration:',i,', Max Error:',max(error),'Ave. Speed:',ave_speed,'Std. Speed:',np.std(speed),'Std/Ave (%):',np.std(speed)/ave_speed*100)
         print('Max Speed:',max(speed),'Min Speed:',np.min(speed),'Ave. Error:',np.mean(error),'Min Error:',np.min(error),"Std. Error:",np.std(error))
@@ -652,6 +660,7 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         if find_peak_dist<1:
             find_peak_dist=1
         peaks,_=find_peaks(error,height=multi_peak_threshold,prominence=0.05,distance=find_peak_dist)       ###only push down peaks higher than height, distance between each peak is 20mm, threshold to filter noisy peaks
+        
         if len(peaks)==0 or np.argmax(error) not in peaks:
             peaks=np.append(peaks,np.argmax(error))
 
@@ -681,15 +690,19 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         ax1.legend(h1+h2, l1+l2, loc=1)
 
         #### save all things
-        if save_all_file:
-            # save fig
-            plt.savefig(ilc_output+'iteration_'+str(i))
-            plt.savefig(ilc_output+'final_iteration')
-            plt.clf()
-        else:
-            fig.canvas.manager.window.move(2818,120)
-            plt.show(block=False)
-            plt.pause(0.1)
+        try:
+            if save_all_file:
+                # save fig
+                plt.savefig(ilc_output+'iteration_'+str(i))
+                plt.savefig(ilc_output+'final_iteration')
+                plt.clf()
+                
+            else:
+                fig.canvas.manager.window.move(2818,120)
+                plt.show(block=False)
+                plt.pause(0.1)
+        except:
+            traceback.print_exc()
 
         # save bp
         if save_all_file:
