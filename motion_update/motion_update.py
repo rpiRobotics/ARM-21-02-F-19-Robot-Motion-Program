@@ -3,6 +3,7 @@ from realrobot import *
 from dual_arm import *
 from pathlib import Path
 import traceback
+import os.path
 from copy import deepcopy
 
 def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs_filename,\
@@ -55,6 +56,11 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
     ms = robotMotionSend('http://'+robot_ip+':80')
 
     breakpoints,primitives,p_bp,q_bp=ms.extract_data_from_cmd(filepath+'/command.csv')
+    if os.path.isfile(filepath+'/safe_q.csv'):
+        safe_q=np.loadtxt(filepath+'/safe_q.csv',delimiter=',')
+    else:
+        safe_q=None
+
 
     alpha = 0.5 # for gradient descent
     alpha_error_dir = 0.8 # for pushing in error direction
@@ -81,7 +87,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
     for i in range(iteration_max):
 
         if realrobot:
-            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=5)
+            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=5,safe_q=safe_q)
             lam, curve_exe, curve_exe_R, speed=logged_data_analysis(robot,timestamp,curve_exe_js)
         else:
             ###execute,curve_fit_js only used for orientation       ###TODO: add save_ls
@@ -121,7 +127,9 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
             draw_speed_max=max(speed)*1.05
         ax1.axis(ymin=0,ymax=draw_speed_max)
         if draw_error_max is None:
-            draw_error_max=max(error)*1.05
+            draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
+        if max(error) >= draw_error_max or max(error) < draw_error_max*0.1:
+            draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
         ax2.axis(ymin=0,ymax=draw_error_max)
 
         ax1.set_xlabel('lambda (mm)')
@@ -623,7 +631,7 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
     max_error_tolerance=error_tol
     max_ang_error_tolerance=np.radians(angerror_tol)
 
-    multi_peak_threshold=0.2
+    multi_peak_threshold=0.4
     ###TODO: extension fix start point, moveC support
     draw_speed_max=None
     draw_error_max=None
