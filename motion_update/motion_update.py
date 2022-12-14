@@ -128,7 +128,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
         ax1.axis(ymin=0,ymax=draw_speed_max)
         if draw_error_max is None:
             draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
-        if max(error) >= draw_error_max or max(error) < draw_error_max*0.1:
+        if max(error) >= draw_error_max or max(np.degrees(angle_error)) >= draw_error_max or max(error) < draw_error_max*0.1:
             draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
         ax2.axis(ymin=0,ymax=draw_error_max)
 
@@ -686,7 +686,7 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         ax1.axis(ymin=0,ymax=draw_speed_max)
         if draw_error_max is None:
             draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
-        if max(error) >= draw_error_max or max(error) < draw_error_max*0.1:
+        if max(error) >= draw_error_max or max(np.degrees(angle_error)) >= draw_error_max or max(error) < draw_error_max*0.1:
             draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
         ax2.axis(ymin=0,ymax=draw_error_max)
         ax1.set_xlabel('lambda (mm)')
