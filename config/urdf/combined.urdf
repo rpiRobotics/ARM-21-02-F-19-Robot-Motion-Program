@@ -91,12 +91,12 @@
   <link name="curve_2_base_link">
     <collision>
       <geometry>
-        <mesh filename="model://curve_2/meshes/generic_fan_blade.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="model://curve_2/meshes/fan_blade_wholepart.stl" scale="0.0254 0.0254 0.0254"/>
       </geometry>
     </collision>
     <visual name="visual">
       <geometry>
-        <mesh filename="model://curve_2/meshes/generic_fan_blade.stl" scale="0.001 0.001 0.001"/>
+        <mesh filename="model://curve_2/meshes/fan_blade_wholepart.stl" scale="0.0254 0.0254 0.0254"/>
       </geometry>
       <material name="orange">
         <color rgba=".04 .42 1 1"/>
