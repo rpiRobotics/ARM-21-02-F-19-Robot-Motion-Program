@@ -210,8 +210,8 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
         ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
     Path(ilc_output).mkdir(exist_ok=True)
 
-    # ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot)
-    ms = robotMotionSend(group=1,uframe=1,utool=3,robot_ip=robot_ip,robot1=robot)
+    ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot)
+    # ms = robotMotionSend(group=1,uframe=2,utool=3,robot_ip=robot_ip,robot1=robot)
 
     breakpoints,primitives,p_bp,q_bp,_=ms.extract_data_from_cmd(filepath+'/command.csv')
 
@@ -329,6 +329,7 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
         if max(error) > max_error_prev:
             max_gradient_descent_flag = True
 
+        max_error_prev= max(error)
         if not max_gradient_descent_flag: # update through push in error direction
             ##########################################calculate error direction and push######################################
             error_bps_v,error_bps_w=ilc.get_error_direction(curve,p_bp,q_bp,curve_exe,curve_exe_R)
@@ -381,15 +382,15 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
     base2_p=base2_T[:3,-1]
 
     # fanuc motion send tool
-    # ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
-    ms = robotMotionSend(group=1,uframe=1,utool=3,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
+    ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
+    # ms = robotMotionSend(group=1,uframe=2,utool=3,robot_ip=robot_ip,robot1=robot1,robot2=robot2,uframe2=2,utool2=utool2)
     
     s=velocity # mm/sec in leader frame
     z=100 # CNT100
 
     breakpoints1,primitives1,p_bp1,q_bp1,_=ms.extract_data_from_cmd(filepath+'/command1.csv')
     breakpoints2,primitives2,p_bp2,q_bp2,_=ms.extract_data_from_cmd(filepath+'/command2.csv')
-    p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(ms.robot1,p_bp1,q_bp1,primitives1,ms.robot2,p_bp2,q_bp2,primitives2,breakpoints1,0,extension_start=extstart,extension_end=extend)  ## curve_1, greedy 0.2
+    p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(ms.robot1,p_bp1,q_bp1,primitives1,ms.robot2,p_bp2,q_bp2,primitives2,breakpoints1,0,extension_start=extstart,extension_end=extend)
 
     ilc=ilc_toolbox([robot1,robot2],[primitives1,primitives2])
 
@@ -404,6 +405,9 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
     error_localmin_flag=False
     use_grad=False
     for i in range(iteration_max):
+
+        # _,primitives1,p_bp1,q_bp1,_=ms.extract_data_from_cmd(filepath+'/result_speed_300/command_arm1_'+str(i)+'.csv')
+        # _,primitives2,p_bp2,q_bp2,_=ms.extract_data_from_cmd(filepath+'/result_speed_300/command_arm2_'+str(i)+'.csv')
 
         if realrobot:
             lam, curve_exe1,curve_exe2,curve_exe_R1,curve_exe_R2,curve_exe_js1,curve_exe_js2, speed, timestamp, relative_path_exe, relative_path_exe_R = \
@@ -478,6 +482,7 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
             df.to_csv(ilc_output+'command_arm1_'+str(i)+'.csv',header=True,index=False)
             df=DataFrame({'primitives':primitives2,'points':p_bp2,'q_bp':q_bp2})
             df.to_csv(ilc_output+'command_arm2_'+str(i)+'.csv',header=True,index=False)
+            ms.save_motions_multimove(robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,s,z,folder=ilc_output,progname='CURVE_1_'+str(s))
             DataFrame(curve_exe_js1).to_csv(ilc_output+'js1_exe_'+str(i)+'.csv',header=False,index=False)
             DataFrame(curve_exe_js2).to_csv(ilc_output+'js2_exe_'+str(i)+'.csv',header=False,index=False)
             DataFrame(curve_exe_js1).to_csv(ilc_output+'curve_js1_exe.csv',header=False,index=False)
@@ -485,6 +490,8 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
             np.save(ilc_output+'final_speed.npy',speed)
             np.save(ilc_output+'final_error.npy',error)
             np.save(ilc_output+'final_ang_error.npy',angle_error)
+            np.save(ilc_output+'final_lam.npy',lam)
+            np.save(ilc_output+'final_timestamp.npy',timestamp)
 
         ###########################plot for verification###################################
         # p_bp_relative,_=ms.form_relative_path(np.squeeze(q_bp1),np.squeeze(q_bp2),base2_R,base2_p)
@@ -511,6 +518,7 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
             print("Speed Tolerance Not Satisfied")
             break
 
+        # continue
         if use_grad:
             ##########################################calculate gradient for peaks######################################
             ###restore trajectory from primitives

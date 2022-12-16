@@ -240,14 +240,14 @@ class SprayGUI(QDialog):
             if 'ABB' in robot1_choose:
                 self.robot1MotionSend=MotionSendABB             ###TODO: add realrobot argument (IP, repeatibility)
             elif 'FANUC' in robot1_choose:
-                # self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
-                ##### ugly cheat
-                robot_flange=Transform(Ry(np.pi/2)@Rz(np.pi),[0,0,0])
-                robot_tcp=Transform(wpr2R([-89.895,84.408,-67.096]),[316.834,0.39,5.897])
-                robot_flange_tcp=robot_flange*robot_tcp
-                self.robot1=m10ia(R_tool=robot_flange_tcp.R,p_tool=robot_flange_tcp.p,d=0,acc_dict_path='config/FANUC_m10ia_acc.pickle')
-                self.robot1.robot_name=robot1_choose
-                ################
+                self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                # ##### ugly cheat
+                # robot_flange=Transform(Ry(np.pi/2)@Rz(np.pi),[0,0,0])
+                # robot_tcp=Transform(wpr2R([-89.895,84.408,-67.096]),[316.834,0.39,5.897])
+                # robot_flange_tcp=robot_flange*robot_tcp
+                # self.robot1=m10ia(R_tool=robot_flange_tcp.R,p_tool=robot_flange_tcp.p,d=0,acc_dict_path='config/FANUC_m10ia_acc.pickle')
+                # self.robot1.robot_name=robot1_choose
+                # ################
                 
                 self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)           
                 # self.robot1=m10ia(d=50)
@@ -951,7 +951,7 @@ class SprayGUI(QDialog):
             ### read curve
             if not self.dualRobot_box.isChecked():
                 self.des_curve_filename = solution_dir+'/Curve_in_base_frame.csv'
-                self.des_curvejs1_filename = solution_dir+'/Curve_js.csv'
+                self.des_curvejs1_filename = solution_dir+'/Curve_js1.csv'
                 ### read part/base pose
                 self.part_pose=np.loadtxt(solution_dir+'/curve_pose.csv',delimiter=',')
                 
@@ -981,7 +981,7 @@ class SprayGUI(QDialog):
             self.solutionDirtext.setText(solution_dir)
 
         except Exception as e:
-            self.showdialog(e)
+            self.showdialog(str(e))
 
             
     
