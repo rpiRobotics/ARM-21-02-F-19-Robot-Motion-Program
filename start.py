@@ -678,9 +678,12 @@ class SprayGUI(QDialog):
         try:
             solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
             self.curvejs_pathname = solution_dir
-            self.curvejs1_filename = solution_dir+'/Curve_js1.csv'
+
             if self.dualRobot_box.isChecked():
+                self.curvejs1_filename = solution_dir+'/Curve_js1.csv'
                 self.curvejs2_filename = solution_dir+'/Curve_js2.csv'
+            else:
+                self.curvejs1_filename = solution_dir+'/Curve_js.csv'
             self.curvejs_solutionDirtext.setText(solution_dir)
         except Exception as e:
             print(e)
