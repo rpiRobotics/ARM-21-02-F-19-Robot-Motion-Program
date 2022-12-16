@@ -114,7 +114,7 @@ def setup_worker_timer(worker,worker_thread,timer,timer_thread,prog_func,res_fun
 class SprayGUI(QDialog):
     def __init__(self, parent=None):
         super(SprayGUI,self).__init__(parent)
-        self.bold=QFont()
+        self.bold=QFont('Arial', 10)
         self.bold.setBold(True)
 
         self.originalPalette = QApplication.palette()
@@ -316,6 +316,7 @@ class SprayGUI(QDialog):
 
         # Group Box
         self.redResLeftBox=QGroupBox("Redundancy Resolution")
+        self.redResLeftBox.setMaximumWidth(500)
         self.redResLeftBox.setFont(self.bold)
         # self.redResLeftBox.setStyleSheet("border: 1px solid red")
         self.redResLeftBox.setStyleSheet("background-color: pink")
@@ -618,6 +619,7 @@ class SprayGUI(QDialog):
 
         # Group Box
         self.moProgGenMidBox=QGroupBox('Motion Program Generation')
+        self.moProgGenMidBox.setMaximumWidth(500)
         self.moProgGenMidBox.setStyleSheet("background-color: lightgreen")
         self.moProgGenMidBox.setFont(self.bold)
 
@@ -844,6 +846,7 @@ class SprayGUI(QDialog):
     def motionProgUpdateRight(self):
         
         self.moProgUpRightBox=QGroupBox('Motion Program Update')
+        self.moProgUpRightBox.setMaximumWidth(500)
         self.moProgUpRightBox.setStyleSheet("background-color: lightblue")
         self.moProgUpRightBox.setFont(self.bold)
 
