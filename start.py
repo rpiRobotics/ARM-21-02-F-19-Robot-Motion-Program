@@ -271,7 +271,7 @@ class SprayGUI(QDialog):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
 
-        msg.setText(message)
+        msg.setText(str(message))
         # msg.setInformativeText("This is additional information")
         # msg.setWindowTitle("MessageBox demo")
         # msg.setDetailedText("The details are as follows:")
