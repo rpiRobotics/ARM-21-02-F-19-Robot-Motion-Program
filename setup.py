@@ -4,8 +4,8 @@ from setuptools import setup
 setup(
     name='motion_primitive',
     version='0.0.1',
-    description='Motion Primitive Project Tools',
-    url='https://github.com/hehonglu123/Motion-Primitive-Planning',
+    description='ARM-21-02-F-19-Robot-Motion-Program',
+    url='https://github.com/rpiRobotics/ARM-21-02-F-19-Robot-Motion-Program',
     py_modules=[],
     install_requires=[
         'PyQt5',
@@ -13,6 +13,10 @@ setup(
         'pandas',
         'general_robotics_toolbox',
         'matplotlib',
-        'sklearn'
+        'scipy',
+        'qpsolvers',
+        'sklearn',
+        'tesseract-robotics',
+        'tesseract-robotics-viewer'
     ]
 )
