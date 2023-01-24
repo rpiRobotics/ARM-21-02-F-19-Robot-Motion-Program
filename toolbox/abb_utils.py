@@ -62,6 +62,11 @@ class MotionSendABB(object):
 		jointt = jointtarget([q[0],q[1],q[2],q[3],q[4],q[5]],[0]*6)
 		return jointt
 
+	def jog_joint(self,q):
+		mp = MotionProgram()
+		mp.MoveAbsJ(self.moveJ_target(q),v500,z10)
+		self.client.execute_motion_program(mp)
+
 	def jog_joint_multimove(self,q1,q2):
 		mp1 = MotionProgram()
 		mp2 = MotionProgram()

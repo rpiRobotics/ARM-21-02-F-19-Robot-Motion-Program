@@ -3,10 +3,11 @@ from realrobot import *
 from dual_arm import *
 from pathlib import Path
 import traceback
+import os.path
 from copy import deepcopy
 
 def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs_filename,\
-    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot):
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,sim_result=False):
     try:
         curve = read_csv(desired_curve_filename,header=None).values
         curve=np.array(curve)
@@ -15,14 +16,14 @@ def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_cu
 
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot.robot_name:
-            return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=realrobot)
+            return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=realrobot,sim_result=sim_result)
         if 'FANUC' in robot.robot_name:
             return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot)
     except:
         traceback.print_exc()
 
 def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs1_filename,desired_curvejs2_filename,\
-    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,utool2=None):
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,sim_result=False,utool2=None):
 
     try:
         curve = read_csv(desired_curve_filename,header=None).values
@@ -30,26 +31,36 @@ def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,v
         curve_js1 = np.array(read_csv(desired_curvejs1_filename,header=None).values)
         curve_js2 = np.array(read_csv(desired_curvejs2_filename,header=None).values)
 
+        ###ABB: save_all_file to False may FREEZE?
         # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot1.robot_name:
-            return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
+            return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2,sim_result=sim_result)
         if 'FANUC' in robot1.robot_name:
             return error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
     except:
         traceback.print_exc()
 
 def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',realrobot=False):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',realrobot=False,sim_result=False):
 
     curve=desired_curve
     curve_js=desired_curve_js
 
-    ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
+    if realrobot:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'_realrobot/'
+    else:
+        ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
+
     Path(ilc_output).mkdir(exist_ok=True)
 
     ms = robotMotionSend('http://'+robot_ip+':80')
 
     breakpoints,primitives,p_bp,q_bp=ms.extract_data_from_cmd(filepath+'/command.csv')
+    if os.path.isfile(filepath+'/safe_q.csv'):
+        safe_q=np.loadtxt(filepath+'/safe_q.csv',delimiter=',')
+    else:
+        safe_q=None
+
 
     alpha = 0.5 # for gradient descent
     alpha_error_dir = 0.8 # for pushing in error direction
@@ -61,9 +72,10 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
 
     ### Gradient descent parameters
     multi_peak_threshold=0.2 # decreasing peak higher than threshold
-    alpha = 0.5 # gradient descentz step size
     
-    p_bp,q_bp=ms.extend(robot,q_bp,primitives,breakpoints,p_bp)  
+    ###use result from simulation output directly
+    if not sim_result:
+        p_bp,q_bp=ms.extend(robot,q_bp,primitives,breakpoints,p_bp)  
 
     ###ilc toolbox def
     ilc=ilc_toolbox(robot,primitives)
@@ -75,7 +87,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
     for i in range(iteration_max):
 
         if realrobot:
-            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=5)
+            curve_js_all_new, curve_exe_js, timestamp=average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,s,z,curve,log_path="",N=5,safe_q=safe_q)
             lam, curve_exe, curve_exe_R, speed=logged_data_analysis(robot,timestamp,curve_exe_js)
         else:
             ###execute,curve_fit_js only used for orientation       ###TODO: add save_ls
@@ -115,13 +127,15 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
             draw_speed_max=max(speed)*1.05
         ax1.axis(ymin=0,ymax=draw_speed_max)
         if draw_error_max is None:
-            draw_error_max=max(error)*1.05
+            draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
+        if max(error) >= draw_error_max or max(np.degrees(angle_error)) >= draw_error_max or max(error) < draw_error_max*0.1:
+            draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
         ax2.axis(ymin=0,ymax=draw_error_max)
 
         ax1.set_xlabel('lambda (mm)')
         ax1.set_ylabel('Speed/lamdot (mm/s)', color='g')
         ax2.set_ylabel('Error/Normal Error (mm/deg)', color='b')
-        plt.title("Speed and Error Plot")
+        plt.title("Iteration "+str(i)+": Speed and Error Plot")
 
         h1, l1 = ax1.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
@@ -585,7 +599,7 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
 
 
 def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,velocity,desired_curve,curve_js1,curve_js2,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False,utool2=2):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False,utool2=2,sim_result=False):
 
     ## desired curve
     relative_path=desired_curve
@@ -609,6 +623,11 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
     breakpoints1,primitives1,p_bp1,q_bp1=ms.extract_data_from_cmd(filepath+'/command1.csv')
     breakpoints2,primitives2,p_bp2,q_bp2=ms.extract_data_from_cmd(filepath+'/command2.csv')
 
+    ###use result from simulation output directly
+    if not sim_result:
+        p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(robot1,p_bp1,q_bp1,primitives1,robot2,p_bp2,q_bp2,primitives2,breakpoints1,extension_start2=extstart,extension_end2=extend)
+
+
     ###get lambda at each breakpoint
     lam_bp=lam_relative_path[np.append(breakpoints1[0],breakpoints1[1:]-1)]
 
@@ -619,14 +638,14 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         # v2_all.append(v5000)
 
     
-    p_bp1,q_bp1,p_bp2,q_bp2=ms.extend_dual(robot1,p_bp1,q_bp1,primitives1,robot2,p_bp2,q_bp2,primitives2,breakpoints1)
+    
 
     ilc=ilc_toolbox([robot1,robot2],[primitives1,primitives2])
 
     max_error_tolerance=error_tol
     max_ang_error_tolerance=np.radians(angerror_tol)
 
-    multi_peak_threshold=0.2
+    multi_peak_threshold=0.4
     ###TODO: extension fix start point, moveC support
     draw_speed_max=None
     draw_error_max=None
@@ -653,6 +672,7 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         std_speed=np.std(speed)
         ##############################calcualte error########################################
         error,angle_error=calc_all_error_w_normal(relative_path_exe,relative_path[:,:3],relative_path_exe_R[:,:,-1],relative_path[:,3:])
+
         print('Iteration:',i,', Max Error:',max(error),'Ave. Speed:',ave_speed,'Std. Speed:',np.std(speed),'Std/Ave (%):',np.std(speed)/ave_speed*100)
         print('Max Speed:',max(speed),'Min Speed:',np.min(speed),'Ave. Error:',np.mean(error),'Min Error:',np.min(error),"Std. Error:",np.std(error))
         print('Max Ang Error:',max(np.degrees(angle_error)),'Min Ang Error:',np.min(np.degrees(angle_error)),'Ave. Ang Error:',np.mean(np.degrees(angle_error)),"Std. Ang Error:",np.std(np.degrees(angle_error)))
@@ -662,6 +682,7 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         if find_peak_dist<1:
             find_peak_dist=1
         peaks,_=find_peaks(error,height=multi_peak_threshold,prominence=0.05,distance=find_peak_dist)       ###only push down peaks higher than height, distance between each peak is 20mm, threshold to filter noisy peaks
+        
         if len(peaks)==0 or np.argmax(error) not in peaks:
             peaks=np.append(peaks,np.argmax(error))
 
@@ -678,28 +699,32 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
             draw_speed_max=max(speed)*1.05
         ax1.axis(ymin=0,ymax=draw_speed_max)
         if draw_error_max is None:
-            draw_error_max=max(error)*1.05
-        if max(error) >= draw_error_max or max(error) < draw_error_max*0.1:
-            draw_error_max=max(error)*1.05
+            draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
+        if max(error) >= draw_error_max or max(np.degrees(angle_error)) >= draw_error_max or max(error) < draw_error_max*0.1:
+            draw_error_max=max(max(error),max(np.degrees(angle_error)))*1.05
         ax2.axis(ymin=0,ymax=draw_error_max)
         ax1.set_xlabel('lambda (mm)')
         ax1.set_ylabel('Speed/lamdot (mm/s)', color='g')
         ax2.set_ylabel('Error/Normal Error (mm/deg)', color='b')
-        plt.title("Speed and Error Plot")
+        plt.title("Iteration "+str(i)+": Speed and Error Plot")
         h1, l1 = ax1.get_legend_handles_labels()
         h2, l2 = ax2.get_legend_handles_labels()
         ax1.legend(h1+h2, l1+l2, loc=1)
 
         #### save all things
-        if save_all_file:
-            # save fig
-            plt.savefig(ilc_output+'iteration_'+str(i))
-            plt.savefig(ilc_output+'final_iteration')
-            plt.clf()
-        else:
-            fig.canvas.manager.window.move(2818,120)
-            plt.show(block=False)
-            plt.pause(0.1)
+        try:
+            if save_all_file:
+                # save fig
+                plt.savefig(ilc_output+'iteration_'+str(i))
+                plt.savefig(ilc_output+'final_iteration')
+                plt.clf()
+                
+            else:
+                fig.canvas.manager.window.move(2818,120)
+                plt.show(block=False)
+                plt.pause(0.1)
+        except:
+            traceback.print_exc()
 
         # save bp
         if save_all_file:
@@ -716,16 +741,16 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
         ###########################plot for verification###################################
         # p_bp_relative,_=ms.form_relative_path(np.squeeze(q_bp1),np.squeeze(q_bp2),base2_R,base2_p)
 
-        if max(error)>max_error and error_localmin_flag:
+        if max(error)>1.1*max_error and error_localmin_flag:
             print("Can't decrease anymore")
             break
 
-        if max(error)>max_error:
+        if max(error)>1.1*max_error:
             print("Use grad")
             error_localmin_flag=True
             use_grad=True
         
-        if max(error)<max_error:
+        if max(error)<1.1*max_error:
             error_localmin_flag=False
 
         max_error=max(error)

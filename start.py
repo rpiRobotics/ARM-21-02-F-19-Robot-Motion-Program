@@ -4,7 +4,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QSpinBox, QDoubleSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
         QVBoxLayout, QWidget,QFileDialog, QMessageBox)
-from PyQt5.QtGui import QPixmap
+from PyQt5.QtGui import QPixmap, QFont
 import sys,os,time,traceback,platform,subprocess
 from pathlib import Path
 from pandas import *
@@ -114,11 +114,14 @@ def setup_worker_timer(worker,worker_thread,timer,timer_thread,prog_func,res_fun
 class SprayGUI(QDialog):
     def __init__(self, parent=None):
         super(SprayGUI,self).__init__(parent)
+        self.bold=QFont('Arial', 12)
+        self.bold.setBold(True)
 
         self.originalPalette = QApplication.palette()
 
         self.robot_ip='127.0.0.1'
         self.realrobot=False
+        self.sim_result=False
         ###tesseract visualizer
         # try:
         #     self.tes_env=Tess_Env('config/urdf/')
@@ -134,37 +137,49 @@ class SprayGUI(QDialog):
         self.robotComBox1.addItems(robot_list)
         self.robotComBox1.currentTextChanged.connect(self.robot1_change)
         robotlabel1=QLabel("Robot1:")
+        robotlabel1.setFont(self.bold)
         robotlabel1.setBuddy(self.robotComBox1)
         self.robotComBox2=QComboBox()
         self.robotComBox2.addItems(robot_list)
         self.robotComBox2.currentTextChanged.connect(self.robot2_change)
         robotlabel2=QLabel("Robot2:")
+        robotlabel2.setFont(self.bold)
         robotlabel2.setBuddy(self.robotComBox2)
 
         ###reset visualization button
         vis_reset_button=QPushButton('Reset Visualization')
+        vis_reset_button.setFont(self.bold)
         vis_reset_button.setDefault(False)
         vis_reset_button.clicked.connect(self.reset_visualization)
 
         ###ROBOT CONTROLLER IP
         IPlabel=QLabel("ROBOT IP:")
+        IPlabel.setFont(self.bold)
         self.robot_ip_box=QLineEdit('127.0.0.1')
         self.robot_ip_box.setFixedWidth(100)
 
         IPlabel.setBuddy(self.robot_ip_box)
         ip_set_button=QPushButton('Set IP')
+        ip_set_button.setFont(self.bold)
         ip_set_button.setDefault(False)
         ip_set_button.clicked.connect(self.read_ip)
 
         ### Dual Robot Activation
         self.dualRobot_box=QCheckBox("Dual Robot")
+        self.dualRobot_box.setFont(self.bold)
         self.dualRobot_box.setChecked(False)
         self.dualRobot_box.stateChanged.connect(self.dualRobotActFunc)
 
         ### real Robot Activation
         self.realrobot_button= QPushButton('Real Robot')
+        self.realrobot_button.setFont(self.bold)
         self.realrobot_button.setDefault(False)
         self.realrobot_button.clicked.connect(self.changeColor)
+
+        ### Simulation Result Activation
+        self.sim_result_box=QCheckBox("Taking Simulation Result")
+        self.sim_result_box.setFont(self.bold)
+        self.sim_result_box.setChecked(False)
 
         ## Redundancy Resolution Box
         self.redundancyResLeft()
@@ -186,10 +201,11 @@ class SprayGUI(QDialog):
         self.toplayout.addWidget(ip_set_button)
         self.toplayout.addWidget(self.dualRobot_box)
         self.toplayout.addWidget(self.realrobot_button)
+        self.toplayout.addWidget(self.sim_result_box)
 
         ## main layout
         self.mainLayout = QGridLayout()
-        self.mainLayout.addLayout(self.toplayout,0,0,1,2)
+        self.mainLayout.addLayout(self.toplayout,0,0,1,0)
         self.mainLayout.addWidget(self.redResLeftBox,1,0)
         self.mainLayout.addWidget(self.moProgGenMidBox,1,1)
         self.mainLayout.addWidget(self.moProgUpRightBox,1,2)
@@ -264,7 +280,7 @@ class SprayGUI(QDialog):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
 
-        msg.setText(message)
+        msg.setText(str(message))
         # msg.setInformativeText("This is additional information")
         # msg.setWindowTitle("MessageBox demo")
         # msg.setDetailedText("The details are as follows:")
@@ -309,15 +325,22 @@ class SprayGUI(QDialog):
 
         # Group Box
         self.redResLeftBox=QGroupBox("Redundancy Resolution")
+        # self.redResLeftBox.setMaximumWidth(500)
+        self.redResLeftBox.setFont(self.bold)
+        # self.redResLeftBox.setStyleSheet("border: 1px solid red")
+        self.redResLeftBox.setStyleSheet("background-color: pink")
         
         # add widgets
         filebutton=QPushButton('Open Curve File')
+        filebutton.setFont(self.bold)
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCurveFile)
         self.curve_filenametext=QLabel('(Please add curve file)')
+        self.curve_filenametext.setFont(self.bold)
 
         if not self.dualRobot_box.isChecked():
             self.redres_baseline_runButton=QPushButton("Run Baseline")
+            self.redres_baseline_runButton.setFont(self.bold)
             self.redres_baseline_runButton.setDefault(True)
             self.redres_baseline_runButton.clicked.connect(self.run_RedundancyResolution_baseline)
 
@@ -327,24 +350,30 @@ class SprayGUI(QDialog):
         self.v_cmd_box.setValue(500)
         self.v_cmd_box.setSingleStep(50)
         v_cmd_qt=QLabel('Aggressive Velocity')
+        v_cmd_qt.setFont(self.bold)
         v_cmd_qt.setBuddy(self.v_cmd_box)
 
         ##### transformation param
         if self.dualRobot_box.isChecked():
             baseTransformHeadsup=QLabel('Enter Robot2 Base Transformation Initial Guess')
+            baseTransformHeadsup.setFont(self.bold)
             baseTransLayout=QHBoxLayout()
             # baseRotLayout=QHBoxLayout()
             self.r2_basePx_box=QLineEdit('1000')
             r2_basePx_label=QLabel('Px')
+            r2_basePx_label.setFont(self.bold)
             r2_basePx_label.setBuddy(self.r2_basePx_box)
             self.r2_basePy_box=QLineEdit('0')
             r2_basePy_label=QLabel('Py')
+            r2_basePy_label.setFont(self.bold)
             r2_basePy_label.setBuddy(self.r2_basePy_box)
             self.r2_basePz_box=QLineEdit('0')
             r2_basePz_label=QLabel('Pz')
+            r2_basePz_label.setFont(self.bold)
             r2_basePz_label.setBuddy(self.r2_basePz_box)
             self.r2_baseRz_box=QLineEdit('180')
             r2_baseRz_label=QLabel('Rz')
+            r2_baseRz_label.setFont(self.bold)
             r2_baseRz_label.setBuddy(self.r2_baseRz_box)
             baseTransLayout.addWidget(r2_basePx_label)
             baseTransLayout.addWidget(self.r2_basePx_box)
@@ -356,6 +385,7 @@ class SprayGUI(QDialog):
             baseTransLayout.addWidget(self.r2_baseRz_box)
 
             qinit2Headsup=QLabel('Enter Robot2 Joint Initial Guess (degree)')
+            qinit2Headsup.setFont(self.bold)
             qinit2Layout=QHBoxLayout()
             self.r2init_boxes=[]
             r2init_labels=[]
@@ -377,6 +407,7 @@ class SprayGUI(QDialog):
         ##########################
 
         self.redres_diffevo_runButton=QPushButton("Run DiffEvo (>1day, needs to run baseline first)")
+        self.redres_diffevo_runButton.setFont(self.bold)
         self.redres_diffevo_runButton.setDefault(True)
 
         self.redres_diffevo_runButton.clicked.connect(self.run_RedundancyResolution_diffevo)
@@ -598,11 +629,15 @@ class SprayGUI(QDialog):
 
         # Group Box
         self.moProgGenMidBox=QGroupBox('Motion Program Generation')
+        # self.moProgGenMidBox.setMaximumWidth(500)
+        self.moProgGenMidBox.setStyleSheet("background-color: lightgreen")
+        self.moProgGenMidBox.setFont(self.bold)
 
         # add button
         # filebutton=QPushButton('Open Curve Js File')
         #### open solution file
         filebutton=QPushButton('Open Solution Directory')
+        filebutton.setFont(self.bold)
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCurveJsFile)
         self.curvejs_solutionDirtext=QLabel('(Please select solution directory)')
@@ -613,8 +648,10 @@ class SprayGUI(QDialog):
         self.total_seg_box.setMaximum(50000)
         self.total_seg_box.setValue(100)
         seglabel=QLabel('Total Segments:')
+        seglabel.setFont(self.bold)
         seglabel.setBuddy(self.total_seg_box)
         self.moprog_runButton_baseline=QPushButton("Run Baseline")
+        self.moprog_runButton_baseline.setFont(self.bold)
         self.moprog_runButton_baseline.setDefault(True)
         self.moprog_runButton_baseline.clicked.connect(self.run_MotionProgGeneration_baseline)
 
@@ -624,8 +661,10 @@ class SprayGUI(QDialog):
         self.greedy_thresh_box.setValue(0.1)
         self.greedy_thresh_box.setSingleStep(0.02)
         greedy_thresh=QLabel('Threshold:')
+        greedy_thresh.setFont(self.bold)
         greedy_thresh.setBuddy(self.greedy_thresh_box)
         self.moprog_runButton_greedy=QPushButton("Run Greedy")
+        self.moprog_runButton_greedy.setFont(self.bold)
         self.moprog_runButton_greedy.setDefault(True)
         self.moprog_runButton_greedy.clicked.connect(self.run_MotionProgGeneration_greedy)
 
@@ -649,9 +688,12 @@ class SprayGUI(QDialog):
         try:
             solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
             self.curvejs_pathname = solution_dir
-            self.curvejs1_filename = solution_dir+'/Curve_js1.csv'
+
             if self.dualRobot_box.isChecked():
+                self.curvejs1_filename = solution_dir+'/Curve_js1.csv'
                 self.curvejs2_filename = solution_dir+'/Curve_js2.csv'
+            else:
+                self.curvejs1_filename = solution_dir+'/Curve_js.csv'
             self.curvejs_solutionDirtext.setText(solution_dir)
         except Exception as e:
             print(e)
@@ -817,14 +859,19 @@ class SprayGUI(QDialog):
     def motionProgUpdateRight(self):
         
         self.moProgUpRightBox=QGroupBox('Motion Program Update')
+        # self.moProgUpRightBox.setMaximumWidth(500)
+        self.moProgUpRightBox.setStyleSheet("background-color: lightblue")
+        self.moProgUpRightBox.setFont(self.bold)
 
         # add button
         solution_button=QPushButton('Open Solution Directory')
+        solution_button.setFont(self.bold)
         solution_button.setDefault(True)
         solution_button.clicked.connect(self.read_Solution)
         self.solutionDirtext=QLabel('(Please select solution directory)')
 
         filebutton=QPushButton('Open Command Directory')
+        filebutton.setFont(self.bold)
         filebutton.setDefault(True)
         filebutton.clicked.connect(self.readCmdFile)
         self.cmd_filenametext=QLabel('(Please select motion command directory)')
@@ -836,6 +883,7 @@ class SprayGUI(QDialog):
         self.vel_box.setValue(500)
         self.vel_box.setSingleStep(10)
         vellabel=QLabel('Robot Velocity:')
+        vellabel.setFont(self.bold)
         vellabel.setBuddy(self.vel_box)
 
         # add box for tolerance setup
@@ -844,6 +892,7 @@ class SprayGUI(QDialog):
         self.error_box.setMaximum(5)
         self.error_box.setValue(0.5)
         errorlabel=QLabel('Error (mm):')
+        errorlabel.setFont(self.bold)
         errorlabel.setBuddy(self.error_box)
 
         self.ang_error_box = QDoubleSpinBox()
@@ -851,6 +900,7 @@ class SprayGUI(QDialog):
         self.ang_error_box.setMaximum(10)
         self.ang_error_box.setValue(3)
         angerrorlabel=QLabel('Angular Error (deg):')
+        angerrorlabel.setFont(self.bold)
         angerrorlabel.setBuddy(self.ang_error_box)
 
         self.vel_std_box = QDoubleSpinBox()
@@ -858,6 +908,7 @@ class SprayGUI(QDialog):
         self.vel_std_box.setMaximum(20)
         self.vel_std_box.setValue(5)
         velstdlabel=QLabel('Velocity Std (%):')
+        velstdlabel.setFont(self.bold)
         velstdlabel.setBuddy(self.vel_std_box)
 
         self.extend_start_box= QDoubleSpinBox()
@@ -865,6 +916,7 @@ class SprayGUI(QDialog):
         self.extend_start_box.setMaximum(500)
         self.extend_start_box.setValue(100)
         extend_start_label=QLabel('Ext Start:')
+        extend_start_label.setFont(self.bold)
         extend_start_label.setBuddy(self.extend_start_box)
 
         self.extend_end_box= QDoubleSpinBox()
@@ -872,9 +924,11 @@ class SprayGUI(QDialog):
         self.extend_end_box.setMaximum(500)
         self.extend_end_box.setValue(100)
         extend_end_label=QLabel('Ext End:')
+        extend_end_label.setFont(self.bold)
         extend_end_label.setBuddy(self.extend_end_box)
 
         self.visual_runButton=QPushButton("Run Visualization")
+        self.visual_runButton.setFont(self.bold)
         self.visual_runButton.setDefault(True)
         self.visual_runButton.clicked.connect(self.run_Visualization)
 
@@ -883,6 +937,7 @@ class SprayGUI(QDialog):
             # if "FANUC" in self.robot1.robot_name:
             utool2_layout=QHBoxLayout()
             utool2_label=QLabel('Robot2 Utool')
+            utool2_label.setFont(self.bold)
             self.utool2_box=QSpinBox()
             self.utool2_box.setMinimum(1)
             self.utool2_box.setMaximum(20)
@@ -893,10 +948,13 @@ class SprayGUI(QDialog):
             utool2_layout.addWidget(self.utool2_box)
 
         self.moupdate_runButton=QPushButton("Run Motion Update")
+        self.moupdate_runButton.setFont(self.bold)
         self.moupdate_runButton.setDefault(True)
         self.moupdate_runButton.clicked.connect(self.run_MotionProgUpdate)
         self.run4_result=QLabel('')
+        self.run4_result.setFont(self.bold)
         self.run4_result_img=QLabel('')
+        self.run4_result_img.setFont(self.bold)
 
         # boxes
         vellayout=QHBoxLayout()
@@ -1069,7 +1127,7 @@ class SprayGUI(QDialog):
         try:    ###TODO: add error box popup
             if not self.dualRobot_box.isChecked():
                 self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot)
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,self.sim_result_box.isChecked())
             else:
                 if self.robot2_name is None:
                     self.run4_result.setText("Robot2 not yet choosed.")
@@ -1086,7 +1144,7 @@ class SprayGUI(QDialog):
                     utool2=int(self.utool2_box.value())
                 #################################
                 self.moupdate_worker=Worker(motion_program_update_dual,self.cmd_pathname,self.robot1,self.robot2,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,self.des_curvejs2_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,utool2)
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,self.sim_result_box.isChecked(),utool2)
             
             self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
                 setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\

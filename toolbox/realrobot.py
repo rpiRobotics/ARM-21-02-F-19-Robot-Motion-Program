@@ -42,13 +42,15 @@ def remove_traj_outlier(curve_exe_js_all,timestamp_all,total_time_all):
 
 	return curve_exe_js_all,timestamp_all
 
-def average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,v,z,curve,log_path='',N=5):
+def average_N_exe(ms,robot,primitives,breakpoints,p_bp,q_bp,v,z,curve,log_path='',N=5,safe_q=None):
 	###N run execute
 	curve_exe_js_all=[]
 	timestamp_all=[]
 	total_time_all=[]
 
 	for r in range(N):
+		if safe_q is not None:
+			ms.jog_joint(safe_q)
 		log_results=ms.exec_motions(robot,primitives,breakpoints,p_bp,q_bp,v,z)
 		###save 5 runs
 		if len(log_path)>0:
