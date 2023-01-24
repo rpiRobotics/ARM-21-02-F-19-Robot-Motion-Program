@@ -63,7 +63,7 @@ python setup.py install
 * Robot Definitions: Each robot is stored as a *.yml* file under `/config/<robot_name>_robot_default_config.yml`. If additional robots are needed, simply configure a new yaml file accordingly.
 * Robot Acceleration Limit: Robot joint acceleration limits are usually configuration dependant, and those values are determined through simulation environment (RobotStudio, RoboGuide) and stored under `/config/<robot_name>_acc.pickle`.
 ### Spatial Curve
-* `Curve_dense.csv`: 5DOF points in curve frame
+* `Curve_dense.csv`: 5DOF points in curve frame. This is provided by the user. Please see [this]() for more information.
 * `Curve_in_base_frame.csv`: 5DOF points in robot base frame
 * `Curve_js.csv`: 6DOF joint space points in robot base frame
 ### Transformation

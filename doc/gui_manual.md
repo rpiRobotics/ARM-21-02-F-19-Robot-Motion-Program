@@ -8,7 +8,7 @@ The whole process process including three steps, Solving Redundancy Resolution, 
 
 ## Pre-request
 
-A csv file defined the desired curve path (position and normal direction) is requered. The first three columns are position (xyz) and the last three columns are normal direction (xyz). An example file is as followed.
+A csv file defined the desired curve path (position and normal direction) is requered. The first three columns are position (xyz) and the last three columns are normal direction (xyz). An example file is as followed. Please read [this]() information for more detail.
 
 ```
 ...
