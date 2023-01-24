@@ -1,0 +1,66 @@
+device_name: fanuc_lrmate200id # Can be anything you like
+manufacturer: FANUC # manufacturer of the robot. No blank allowed.
+model: lrmate200id # model name of the robot. No blank allowed.
+user_description: FANUC lrmate200id robot arm # user description. 
+axis:
+  - x: 0.0
+    y: 0.0
+    z: 1.0
+  - x: 0.0
+    y: 1.0
+    z: 0.0
+  - x: 0.0
+    y: 1.0
+    z: 0.0
+  - x: 1.0
+    y: 0.0
+    z: 0.0
+  - x: 0.0
+    y: 1.0
+    z: 0.0
+  - x: 1.0
+    y: 0.0
+    z: 0.0
+chain: # unit millimeter (mm)
+  - x: 0.0
+    y: 0.0
+    z: 330 
+  - x: 50
+    y: 0.0
+    z: 0.0
+  - x: 0.
+    y: 0.0
+    z: 330
+  - x: 0.0
+    y: 0.0
+    z: 35
+  - x: 335
+    y: 0.0
+    z: 0.0
+  - x: 80
+    y: 0.0
+    z: 0.0
+  - x: 0.0
+    y: 0.0
+    z: 0.0
+joint_limits_lower: # unit degrees, lower joint limit
+  - -170
+  - -100
+  - -70
+  - -190
+  - -125
+  - -360
+joint_limits_upper: # unit degrees, lower joint limit
+  - 170
+  - 145
+  - 205
+  - 190
+  - 125
+  - 360
+joint_vel_limits: # unit degrees/sec, joint velocity limits
+  - 450
+  - 380
+  - 520
+  - 550
+  - 545
+  - 1000

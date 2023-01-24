@@ -17,6 +17,7 @@ from toolbox.abb_utils import *
 from toolbox.fanuc_utils import *
 from motion_update.motion_update import *
 from toolbox.tes_env import *
+import yaml
 
 def msgbtn(i):
     print ("Button pressed is:",i.text())
@@ -123,16 +124,19 @@ class SprayGUI(QDialog):
         self.realrobot=False
         self.sim_result=False
         ###tesseract visualizer
-        # try:
-        #     self.tes_env=Tess_Env('config/urdf/')
-        # except Exception as e:
-        #     print(e)
-        #     print("Start without tesseract visualizer")
-        #     self.tes_env=None
-        self.tes_env=None
+        try:
+            self.tes_env=Tess_Env('config/urdf/')
+        except Exception as e:
+            print(e)
+            print("Start without tesseract visualizer")
+            self.tes_env=None
+        # self.tes_env=None
 
         # robot box
-        robot_list=['','FANUC_m710ic','FANUC_m900ia','FANUC_m10ia','FANUC_lrmate200id','ABB_1200_5_90','ABB_6640_180_255']
+        with open('config/robot_lists.yml','r') as f:
+            all_robot=yaml.safe_load(f)
+        # robot_list=['','FANUC_m710ic','FANUC_m900ia','FANUC_m10ia','FANUC_lrmate200id','ABB_1200_5_90','ABB_6640_180_255']
+        robot_list=all_robot['robots']        
         self.robotComBox1=QComboBox()
         self.robotComBox1.addItems(robot_list)
         self.robotComBox1.currentTextChanged.connect(self.robot1_change)

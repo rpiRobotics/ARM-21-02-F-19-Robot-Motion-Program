@@ -1,0 +1,5 @@
+robots:
+- FANUC_m10ia
+- FANUC_lrmate200id
+- ABB_1200_5_90
+- ABB_6640_180_255
