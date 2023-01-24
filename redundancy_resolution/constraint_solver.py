@@ -29,7 +29,6 @@ class lambda_opt(object):
 
 		self.steps=steps
 
-		# self.lim_factor=0.0000001###avoid fwd error on joint limit
 		self.lim_factor=np.deg2rad(1) ###avoid fwd error on joint limit
 
 		#prespecified primitives
@@ -113,7 +112,6 @@ class lambda_opt(object):
 					if alpha<0.01:
 						break
 					q_all.append(q_all[-1]+alpha*qdot)
-					# print(q_all[-1])
 			except:
 				q_out.append(q_all[-1])
 				traceback.print_exc()
@@ -162,18 +160,10 @@ class lambda_opt(object):
 
 			H=np.dot(np.transpose(Jp),Jp)+Kq+Kw*np.dot(np.transpose(JR_mod),JR_mod)
 			H=(H+np.transpose(H))/2
-			#####vd = - v_des - K ( x - x_des)
 			v_des=(curve[idx]-curve[prev_idx])/ts
 			vd=v_des+K_trak*(curve[prev_idx]-pose_now.p)
 			ezdot_des=(curve_normal[idx]-curve_normal[prev_idx])/ts
 			ezdotd=ezdot_des+K_trak*(curve_normal[prev_idx]-pose_now.R[:,-1])
-
-			#####vd = K ( x_des_next - x_cur)
-			# vd=(curve[idx]-pose_now.p)/ts
-			# vd=lamdot_des*vd/np.linalg.norm(vd)
-			# ezdotd=(curve_normal[idx]-pose_now.R[:,-1])/ts
-
-			# print(np.linalg.norm(vd))
 
 			f=-np.dot(np.transpose(Jp),vd)-Kw*np.dot(np.transpose(JR_mod),ezdotd)
 			if len(qdot_prev)==0:
@@ -314,10 +304,6 @@ class lambda_opt(object):
 						print("error_fb:",error_fb)
 						raise AssertionError
 
-					# print(error_fb)
-					# print(i)
-					# print(np.dot(pose2_world_now.R.T,pose1_now.p-pose2_world_now.p)-self.curve[i])
-					# print(np.dot(pose2_world_now.R.T,pose1_now.R[:,-1])-self.curve_normal[i])
 					########################################################QP formation###########################################
 					
 					J1=j_all1[-1]        #current Jacobian
@@ -345,9 +331,6 @@ class lambda_opt(object):
 					f=-np.dot(np.transpose(J_all_p),vd)-Kw*np.dot(np.transpose(J_all_R),ezdotd)
 					qdot=solve_qp(H,f,lb=lower_limit-np.hstack((q_all1[-1],q_all2[-1]))+self.lim_factor*np.ones(12),ub=upper_limit-np.hstack((q_all1[-1],q_all2[-1]))-self.lim_factor*np.ones(12),solver='quadprog')
 
-					# print(qdot)
-					# alpha=fminbound(self.error_calc4,0,0.999999999999999999999,args=(q_all1[-1],q_all2[-1],qdot,self.curve[i],self.curve_normal[i],))
-					# print(alpha)
 					alpha=1
 					q_all1.append(q_all1[-1]+alpha*qdot[:6])
 					q_all2.append(q_all2[-1]+alpha*qdot[6:])
@@ -402,9 +385,6 @@ class lambda_opt(object):
 
 					error_fb=np.linalg.norm(np.dot(pose2_world_now.R.T,pose1_now.p-pose2_world_now.p)-self.curve[i])+np.linalg.norm(np.dot(pose2_world_now.R.T,pose1_now.R[:,-1])-self.curve_normal[i])	
 
-					# print(i)
-					# print(np.dot(pose2_world_now.R.T,pose1_now.p-pose2_world_now.p)-self.curve[i])
-					# print(np.dot(pose2_world_now.R.T,pose1_now.R[:,-1])-self.curve_normal[i])
 					########################################################QP formation###########################################
 					
 					J1=self.robot1.jacobian(q_all1[-1])        #calculate current Jacobian
@@ -648,18 +628,15 @@ class lambda_opt(object):
 			q_out1,q_out2,j_out1,j_out2=self.dual_arm_stepwise_optimize(q_init1,q_init2,w1=0.01,w2=0.02)
 		except:
 			traceback.print_exc()
-			# print("this one")
 			return 999
 
 		joint_margin=0.01
 		
 		###make sure extension possible by checking start & end configuration
 		if np.min(self.robot1.upper_limit-q_out1[0])<joint_margin or  np.min(q_out1[0]-self.robot1.lower_limit)<joint_margin or np.min(self.robot1.upper_limit-q_out1[-1])<joint_margin or np.min(q_out1[-1]-self.robot1.lower_limit)<joint_margin:
-			# print("joint con 1")
 			return 999
 		###make sure extension possible by checking start & end configuration
 		if np.min(self.robot2.upper_limit-q_out2[0])<joint_margin or  np.min(q_out2[0]-self.robot2.lower_limit)<joint_margin or np.min(self.robot2.upper_limit-q_out2[-1])<joint_margin or  np.min(q_out2[-1]-self.robot2.lower_limit)<joint_margin:
-			# print("joint con 2")
 			return 999
 		
 		jacobian_margin=0.1
@@ -668,21 +645,17 @@ class lambda_opt(object):
 		for J in j_out1[::jac_check_count]:
 			_,sv,_=np.linalg.svd(J)
 			if np.min(sv)<jacobian_margin:
-				# print("min svd of J1 too small")
 				return 999
 		_,sv,_=np.linalg.svd(j_out1[-1])
 		if np.min(sv)<jacobian_margin:
-			# print("min svd of J1 too small")
 			return 999
 		### J2
 		for J in j_out2[::jac_check_count]:
 			_,sv,_=np.linalg.svd(J)
 			if np.min(sv)<jacobian_margin:
-				# print("min svd of J2 too small")
 				return 999
 		_,sv,_=np.linalg.svd(j_out2[-1])
 		if np.min(sv)<jacobian_margin:
-			# print("min svd of J2 too small")
 			return 999
 
 		speed,_,_=traj_speed_est_dual(self.robot1,self.robot2,q_out1,q_out2,self.lam,self.v_cmd)
@@ -719,21 +692,17 @@ class lambda_opt(object):
 		for J in j_out1[::jac_check_count]:
 			_,sv,_=np.linalg.svd(J)
 			if np.min(sv)<jacobian_margin:
-				# print("min svd of J1 too small")
 				return 999
 		_,sv,_=np.linalg.svd(j_out1[-1])
 		if np.min(sv)<jacobian_margin:
-			# print("min svd of J1 too small")
 			return 999
 		### J2
 		for J in j_out2[::jac_check_count]:
 			_,sv,_=np.linalg.svd(J)
 			if np.min(sv)<jacobian_margin:
-				# print("min svd of J2 too small")
 				return 999
 		_,sv,_=np.linalg.svd(j_out2[-1])
 		if np.min(sv)<jacobian_margin:
-			# print("min svd of J1 too small")
 			return 999
 
 		speed,_,_=traj_speed_est_dual(self.robot1,self.robot2,q_out1,q_out2,self.lam,self.v_cmd)
@@ -824,8 +793,6 @@ class lambda_opt(object):
 					# traceback.print_exc()
 					return 999
 
-		# curve_blend_js,dqdlam_list,spl_list,merged_idx=blend_js2(q_out,self.breakpoints,self.lam_original)
-		# lamdot_min=est_lamdot_min(dqdlam_list,self.breakpoints,self.lam_original,spl_list,merged_idx,self.robot1)
 		lam_blended,q_blended=blend_cs(q_out,self.curve_original,self.breakpoints,self.lam_original,self.primitives,self.robot1)
 		dlam=calc_lamdot(q_blended,lam_blended,self.robot1,1)
 		lamdot_min=min(dlam)
@@ -872,10 +839,6 @@ class lambda_opt(object):
 				except:
 					# traceback.print_exc()
 					return 999
-
-		# curve_blend_js,dqdlam_list,spl_list,merged_idx=blend_js2(q_out,self.breakpoints,self.lam_original)
-		# lamdot_min=est_lamdot_min(dqdlam_list,self.breakpoints,self.lam_original,spl_list,merged_idx,self.robot1)
-		# lam_blended,q_blended=blend_cs(q_out,curve_originial_new,self.breakpoints,self.lam_original,self.primitives,self.robot1)
 		try:
 			lam_blended,q_blended=blend_js_from_primitive(q_out,curve_originial_new,self.breakpoints,self.lam_original,self.primitives,self.robot1)
 		except:

@@ -135,7 +135,6 @@ class SprayGUI(QDialog):
         # robot box
         with open('config/robot_lists.yml','r') as f:
             all_robot=yaml.safe_load(f)
-        # robot_list=['','FANUC_m710ic','FANUC_m900ia','FANUC_m10ia','FANUC_lrmate200id','ABB_1200_5_90','ABB_6640_180_255']
         robot_list=all_robot['robots']        
         self.robotComBox1=QComboBox()
         self.robotComBox1.addItems(robot_list)
@@ -261,16 +260,7 @@ class SprayGUI(QDialog):
                 self.robot1MotionSend=MotionSendABB             ###TODO: add realrobot argument (IP, repeatibility)
             elif 'FANUC' in robot1_choose:
                 self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
-                # ##### ugly cheat
-                # robot_flange=Transform(Ry(np.pi/2)@Rz(np.pi),[0,0,0])
-                # robot_tcp=Transform(wpr2R([-89.895,84.408,-67.096]),[316.834,0.39,5.897])
-                # robot_flange_tcp=robot_flange*robot_tcp
-                # self.robot1=m10ia(R_tool=robot_flange_tcp.R,p_tool=robot_flange_tcp.p,d=0,acc_dict_path='config/FANUC_m10ia_acc.pickle')
-                # self.robot1.robot_name=robot1_choose
-                # ################
-                
-                self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)           
-                # self.robot1=m10ia(d=50)
+                self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)  
         self.robot1_name=robot1_choose
 
         if self.tes_env is not None:
@@ -285,9 +275,6 @@ class SprayGUI(QDialog):
         msg.setIcon(QMessageBox.Information)
 
         msg.setText(str(message))
-        # msg.setInformativeText("This is additional information")
-        # msg.setWindowTitle("MessageBox demo")
-        # msg.setDetailedText("The details are as follows:")
         msg.setStandardButtons(QMessageBox.Ok)# | QMessageBox.Cancel)
         msg.buttonClicked.connect(msgbtn)
 
@@ -306,12 +293,6 @@ class SprayGUI(QDialog):
         ############################
 
         ## main layout
-        # self.mainLayout = QGridLayout()
-        # self.mainLayout.addLayout(self.toplayout,0,0,1,2)
-        # self.mainLayout.addWidget(self.redResLeftBox,1,0)
-        # self.mainLayout.addWidget(self.moProgGenMidBox,1,1)
-        # self.mainLayout.addWidget(self.moProgUpRightBox,1,2)
-        # self.setLayout(self.mainLayout)
         leftitem = self.mainLayout.itemAtPosition(1,0)
         self.mainLayout.removeItem(leftitem)
         leftitem.widget().deleteLater()
@@ -329,9 +310,7 @@ class SprayGUI(QDialog):
 
         # Group Box
         self.redResLeftBox=QGroupBox("Redundancy Resolution")
-        # self.redResLeftBox.setMaximumWidth(500)
         self.redResLeftBox.setFont(self.bold)
-        # self.redResLeftBox.setStyleSheet("border: 1px solid red")
         self.redResLeftBox.setStyleSheet("background-color: pink")
         
         # add widgets
@@ -362,7 +341,6 @@ class SprayGUI(QDialog):
             baseTransformHeadsup=QLabel('Enter Robot2 Base Transformation Initial Guess')
             baseTransformHeadsup.setFont(self.bold)
             baseTransLayout=QHBoxLayout()
-            # baseRotLayout=QHBoxLayout()
             self.r2_basePx_box=QLineEdit('1000')
             r2_basePx_label=QLabel('Px')
             r2_basePx_label.setFont(self.bold)
@@ -431,7 +409,6 @@ class SprayGUI(QDialog):
         if self.dualRobot_box.isChecked():
             layout.addWidget(baseTransformHeadsup)
             layout.addLayout(baseTransLayout)
-            # layout.addLayout(baseRotLayout)
             layout.addWidget(qinit2Headsup)
             layout.addLayout(qinit2Layout)
             layout.addWidget(self.opt_base_box)
@@ -446,7 +423,6 @@ class SprayGUI(QDialog):
         if self.tes_env is None:
             return
         ###TODO: FIX QUICK TESSERACT RESET
-        # self.tes_env=Tess_Env('config/urdf/')
         H=np.eye(4)
         H[:-1,-1]=100*np.ones(3)
         self.tes_env.update_pose('ABB_6640_180_255',H)
@@ -633,12 +609,9 @@ class SprayGUI(QDialog):
 
         # Group Box
         self.moProgGenMidBox=QGroupBox('Motion Program Generation')
-        # self.moProgGenMidBox.setMaximumWidth(500)
         self.moProgGenMidBox.setStyleSheet("background-color: lightgreen")
         self.moProgGenMidBox.setFont(self.bold)
 
-        # add button
-        # filebutton=QPushButton('Open Curve Js File')
         #### open solution file
         filebutton=QPushButton('Open Solution Directory')
         filebutton.setFont(self.bold)
@@ -1048,16 +1021,6 @@ class SprayGUI(QDialog):
             
     
     def readCmdFile(self):
-        
-        # dlg = QFileDialog()
-        # dlg.setFileMode(QFileDialog.AnyFile)
-        # dlg.setFilter(QDir.Files)
-
-        # if dlg.exec_():
-        #     filenames = dlg.selectedFiles()
-        #     self.cmd_filename = filenames[0]
-        #     self.cmd_pathname = os.path.dirname(self.cmd_filename)
-        #     self.cmd_filenametext.setText(self.cmd_filename)
         
         try:
             self.cmd_pathname = str(QFileDialog.getExistingDirectory(self, "Select Directory"))

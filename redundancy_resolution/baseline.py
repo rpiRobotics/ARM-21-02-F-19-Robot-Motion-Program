@@ -101,6 +101,3 @@ def find_js(robot,curve,curve_normal):
 			curve_js_all.append(curve_js)
 
 	return curve_js_all
-
-# if __name__ == "__main__":
-# 	main()

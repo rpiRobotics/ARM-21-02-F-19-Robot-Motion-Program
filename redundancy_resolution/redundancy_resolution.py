@@ -7,40 +7,33 @@ from fanuc_motion_program_exec_client import *
 def redundancy_resolution_baseline(filename, robot):
 
     ## fanuc has different joint rotation axis
-    # if 'FANUC' in robot.robot_name:
-    #     robot.j_compensation=np.array([1,1,1,1,1,1])
+    if 'FANUC' in robot.robot_name:
+        robot.j_compensation=np.array([1,1,1,1,1,1])
 
     curve = np.loadtxt(filename,delimiter=',')
     H = pose_opt(robot,curve[:,:3],curve[:,3:])
-    print(H)
-    print(R2wpr(H[:3,:3]))
-    # # return
-    # H=np.array(H)
-    # H[:3,:3]=H[:3,:3]@rot([1,0,0],np.radians(180))
-    # H[2,-1]=H[2,-1]+250
-    # print(H)
     curve_base,curve_normal_base=curve_frame_conversion(curve[:,:3],curve[:,3:],H)
     
-    # curve_js_all=find_js(robot,curve_base,curve_normal_base)
+    curve_js_all=find_js(robot,curve_base,curve_normal_base)
 
-    # if len(curve_js_all) > 0:
-    #     J_min=[]
-    #     for i in range(len(curve_js_all)):
-    #         J_min.append(find_j_min(robot,curve_js_all[i]))
+    if len(curve_js_all) > 0:
+        J_min=[]
+        for i in range(len(curve_js_all)):
+            J_min.append(find_j_min(robot,curve_js_all[i]))
 
-    #     J_min=np.array(J_min)
-    #     curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
-    # else:
-    #     curve_js=[]
+        J_min=np.array(J_min)
+        curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
+    else:
+        curve_js=[]
 
     curve_js=[]
     if len(curve_js)==0:
         print("Us QP")
         curve_js=redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base)
 
-    # if 'FANUC' in robot.robot_name:
-    #     curve_js[:,2:]=-1*curve_js[:,2:]
-    #     robot.j_compensation=np.array([1,1,-1,-1,-1,-1])
+    if 'FANUC' in robot.robot_name:
+        curve_js[:,2:]=-1*curve_js[:,2:]
+        robot.j_compensation=np.array([1,1,-1,-1,-1,-1])
 
     return curve_base,curve_normal_base,curve_js,H
 

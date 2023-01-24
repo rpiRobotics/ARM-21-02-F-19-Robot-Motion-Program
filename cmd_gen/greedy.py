@@ -60,12 +60,6 @@ class greedy_fit(fitting_toolbox):
 					else:
 						next_point=max(prev_possible_point,2)
 						return primitive(self.curve[cur_idx:cur_idx+next_point],self.curve_js[cur_idx:cur_idx+next_point],self.curve_R[cur_idx:cur_idx+next_point], rl=rl)
-			
-			###end condition2, gurantee minimum segment length, excluding first and last points
-			# if prev_point<self.min_step and next_point<self.min_step and self.breakpoints[-1]>0:
-			# 	next_point=self.min_step
-			# 	return primitive(self.curve[cur_idx:cur_idx+next_point],self.curve_js[cur_idx:cur_idx+next_point],self.curve_R[cur_idx:cur_idx+next_point], rl=rl)
-
 			###fitting
 			curve_fit,curve_fit_R,curve_fit_js,max_error,max_ori_error=primitive(self.curve[cur_idx:cur_idx+next_point],self.curve_js[cur_idx:cur_idx+next_point],self.curve_R[cur_idx:cur_idx+next_point], rl=rl)
 
@@ -166,12 +160,6 @@ class greedy_fit(fitting_toolbox):
 			print(primitives)
 			print(max_errors[key],max_ori_errors[key])
 			
-
-		##############################check error (against fitting back projected curve)##############################
-
-		# max_error,max_error_idx=calc_max_error(self.curve_fit,self.curve_backproj)
-		# print('max error: ', max_error)
-
 		self.curve_fit=np.array(self.curve_fit)
 		self.curve_fit_R=np.array(self.curve_fit_R)
 		self.curve_fit_js=np.array(self.curve_fit_js)
@@ -200,18 +188,6 @@ class greedy_fit(fitting_toolbox):
 				i=remove_idx[-1]+1
 		close_indices=np.delete(close_indices,remove_idx)
 
-		# fit_primitives={'movel_fit':movel_fit,'movec_fit':movec_fit,'movej_fit':movej_fit}
-		###merge closely programmed points
-		# for idx in close_indices:
-		# 	new_bp=int((breakpoints[idx]+breakpoints[idx+1])/2)
-		# 	if primitives=='movej_fit':
-		# 		curve_fit,curve_fit_R,curve_fit_js,_,_=fit_primitives[primitives[idx]](curve[breakpoints[idx-1]:new_bp],curve_js[breakpoints[idx-1]:new_bp],curve_R[breakpoints[idx-1]:new_bp],p_constraint=curve_fit_js[breakpoints[idx-1]])
-		# 	else:
-		# 		curve_fit,curve_fit_R,_,_,_=fit_primitives[primitives[idx]](curve[breakpoints[idx-1]:new_bp],curve_js[breakpoints[idx-1]:new_bp],curve_R[breakpoints[idx-1]:new_bp],p_constraint=curve_fit[breakpoints[idx-1]],R_constraint=self.robot.fwd(curve_fit_js[breakpoints[idx-1]]).R)
-		# 		curve_fit_js=car2js(self.robot,curve_fit_js[breakpoints[idx-1]],curve_fit,curve_fit_R)
-		# 	points[idx][-1]=curve_fit[-1]
-		# 	q_bp[idx][-1]=curve_fit_js[-1]
-
 		###remove old breakpoints
 		indicies2remove=(close_indices+1).tolist()
 		indicies2remove.reverse()
@@ -237,10 +213,6 @@ class greedy_fit(fitting_toolbox):
 				points[-2][-1]=curve_fit[-1]
 				q_bp[-2][0]=car2js(self.robot,self.curve_fit_js[breakpoints[-2]],p_bp[-2][0],curve_fit_R[int(len(curve_fit)/2)])[0]
 				q_bp[-2][-1]=car2js(self.robot,self.curve_fit_js[breakpoints[-1]],p_bp[-2][-1],curve_fit_R[-1])[0]
-
-			# points[-2][-1]=points[-1][-1]
-			# q_bp[-2][-1]=q_bp[-1][-1]
-			# breakpoints[-2]=breakpoints[-1]
 
 			del breakpoints[-1]
 			del primitives[-1]
@@ -287,9 +259,6 @@ class greedy_fit(fitting_toolbox):
 		q_bp=np.delete(q_bp,close_indices).tolist()
 		p_bp=np.delete(p_bp,close_indices).tolist()
 
-		# p_bp_np=np.array([item[-1] for item in p_bp])
-		# bp_diff=np.linalg.norm(np.diff(p_bp_np,axis=0),axis=1)
-		# print(bp_diff)
 		return breakpoints,primitives,p_bp,q_bp
 
 

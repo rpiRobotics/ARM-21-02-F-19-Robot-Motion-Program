@@ -14,7 +14,6 @@ def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_cu
         curve_js = read_csv(desired_curvejs_filename,header=None).values
         curve_js=np.array(curve_js)
 
-        # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot.robot_name:
             return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=realrobot,sim_result=sim_result)
         if 'FANUC' in robot.robot_name:
@@ -32,7 +31,6 @@ def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,v
         curve_js2 = np.array(read_csv(desired_curvejs2_filename,header=None).values)
 
         ###ABB: save_all_file to False may FREEZE?
-        # return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend)
         if 'ABB' in robot1.robot_name:
             return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2,sim_result=sim_result)
         if 'FANUC' in robot1.robot_name:
@@ -225,7 +223,6 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
     Path(ilc_output).mkdir(exist_ok=True)
 
     ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot)
-    # ms = robotMotionSend(group=1,uframe=2,utool=3,robot_ip=robot_ip,robot1=robot)
 
     breakpoints,primitives,p_bp,q_bp,_=ms.extract_data_from_cmd(filepath+'/command.csv')
 
@@ -397,7 +394,6 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
 
     # fanuc motion send tool
     ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
-    # ms = robotMotionSend(group=1,uframe=2,utool=3,robot_ip=robot_ip,robot1=robot1,robot2=robot2,uframe2=2,utool2=utool2)
     
     s=velocity # mm/sec in leader frame
     z=100 # CNT100
@@ -507,9 +503,6 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
             np.save(ilc_output+'final_lam.npy',lam)
             np.save(ilc_output+'final_timestamp.npy',timestamp)
 
-        ###########################plot for verification###################################
-        # p_bp_relative,_=ms.form_relative_path(np.squeeze(q_bp1),np.squeeze(q_bp2),base2_R,base2_p)
-
         if max(error)>max_error and error_localmin_flag:
             print("Can't decrease anymore")
             break
@@ -572,8 +565,6 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
             error_bps_v1,error_bps_w1,error_bps_v2,error_bps_w2=ilc.get_error_direction_dual(relative_path,p_bp1,q_bp1,p_bp2,q_bp2,relative_path_exe,relative_path_exe_R,curve_exe1,curve_exe_R1,curve_exe2,curve_exe_R2)
             error_bps_w1=np.zeros(error_bps_w1.shape)
             error_bps_w2=np.zeros(error_bps_w2.shape)
-            # error_bps_v1=np.zeros(error_bps_v1.shape)
-            # error_bps_v2=np.zeros(error_bps_v2.shape)
 
             gamma_v=0.2
             gamma_w=0.1
@@ -737,9 +728,6 @@ def error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,veloc
             np.save(ilc_output+'final_speed.npy',speed)
             np.save(ilc_output+'final_error.npy',error)
             np.save(ilc_output+'final_ang_error.npy',angle_error)
-
-        ###########################plot for verification###################################
-        # p_bp_relative,_=ms.form_relative_path(np.squeeze(q_bp1),np.squeeze(q_bp2),base2_R,base2_p)
 
         if max(error)>1.1*max_error and error_localmin_flag:
             print("Can't decrease anymore")

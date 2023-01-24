@@ -15,7 +15,6 @@ class greedy_fit_dual(fitting_toolbox):
         self.max_ori_threshold=max_ori_threshold
         self.step=int(len(curve_js1)/25)
 
-        # self.min_step=int(min_length/np.average(np.diff(self.lam)))
         self.min_step=int(min_length)
         self.c_min_length=50
 
@@ -126,15 +125,10 @@ class greedy_fit_dual(fitting_toolbox):
             curve_fit1_world=copy.deepcopy(curve_fit1)
             curve_fit_R1_world=copy.deepcopy(curve_fit_R1)
 
-            # curve_fit2=[]
-            # curve_fit_js2=[]
             for i in range(len(curve_fit1)):
                 pose2_world_now=self.robot2.fwd(self.curve_js2[i+self.breakpoints[-1]],world=True)
                 curve_fit1_world[i]=pose2_world_now.p+pose2_world_now.R@curve_fit1[i]
                 curve_fit_R1_world[i]=pose2_world_now.R@curve_fit_R1[i]
-
-                # curve_fit_js2.append(self.curve_js2[i+self.breakpoints[-1]])
-                # curve_fit2.append(self.robot2.fwd(self.curve_js2[i+self.breakpoints[-1]]).p)
 
             ###solve inv_kin here
             if len(self.curve_fit_js1)>1:
@@ -145,15 +139,12 @@ class greedy_fit_dual(fitting_toolbox):
 
             ###generate output
             if primitive1=='movec_fit':
-                # points1.append([curve_fit1[int(len(curve_fit1)/2)],curve_fit1[-1]])
                 points1.append([curve_fit1_world[int(len(curve_fit1_world)/2)],curve_fit1_world[-1]])
                 q_bp1.append([curve_fit_js1[int(len(curve_fit_R1)/2)],curve_fit_js1[-1]])
             elif primitive1=='movel_fit':
-                # points1.append([curve_fit1[-1]])
                 points1.append([curve_fit1_world[-1]])
                 q_bp1.append([curve_fit_js1[-1]])
             else:
-                # points1.append([curve_fit1[-1]])
                 points1.append([curve_fit1_world[-1]])
                 q_bp1.append([curve_fit_js1[-1]])
 
@@ -180,9 +171,6 @@ class greedy_fit_dual(fitting_toolbox):
             # print(max_errors[key],max_ori_errors[key])
 
         ##############################check error (against fitting back projected curve)##############################
-
-        # max_error,max_error_idx=calc_max_error(self.curve_fit,self.curve_backproj)
-        # print('max error: ', max_error)
 
         self.curve_fit1=np.array(self.curve_fit1)
         self.curve_fit_R1=np.array(self.curve_fit_R1)
