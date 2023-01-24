@@ -40,9 +40,23 @@ Robot drivers are python interface with robot controller. Follow instruction on 
 * [FANUC Driver](http://github.com/eric565648/fanuc_motion_program_exec)
 * [ABB Driver](http://github.com/johnwason/abb_motion_program_exec)
 ### Other pip packages (install through setup.py)
-* PyQt
-* Scipy
-* qpsolvers
+Tested with following versions, but the newest version should work
+* PyQt5==5.15.4
+* numpy==1.23.4
+* pandas==1.4.0
+* general_robotics_toolbox==0.1.6
+* matplotlib==3.4.3
+* scipy==1.9.2
+* qpsolvers==1.8.0
+* sklearn
+* tesseract-robotics==0.1.8
+* tesseract-robotics-viewer==0.2.2
+
+Use the following command to install all package at once
+```
+python setup.py install
+```
+
 
 ## Data Structure
 ### Robot
