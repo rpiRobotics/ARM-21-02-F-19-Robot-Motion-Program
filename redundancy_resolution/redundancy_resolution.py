@@ -6,11 +6,12 @@ from fanuc_motion_program_exec_client import *
 
 def redundancy_resolution_baseline(filename, robot):
 
-    ## fanuc has different joint rotation axis
-    if 'FANUC' in robot.robot_name:
-        robot.j_compensation=np.array([1,1,1,1,1,1])
-
     curve = np.loadtxt(filename,delimiter=',')
+
+    total_len=len(curve)
+    curve=curve[int(total_len/4):]
+    # curve=curve[int(total_len/2):]
+    
     H = pose_opt(robot,curve[:,:3],curve[:,3:])
     curve_base,curve_normal_base=curve_frame_conversion(curve[:,:3],curve[:,3:],H)
     
@@ -24,16 +25,21 @@ def redundancy_resolution_baseline(filename, robot):
         J_min=np.array(J_min)
         curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
     else:
-        curve_js=[]
+        print("Us Init R")
+        curve_js_all=find_js(robot,curve_base,curve_normal_base,use_initR=True)
+        if len(curve_js_all) > 0:
+            J_min=[]
+            for i in range(len(curve_js_all)):
+                J_min.append(find_j_min(robot,curve_js_all[i]))
 
-    curve_js=[]
+            J_min=np.array(J_min)
+            curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
+        else:
+            curve_js=[]
+
     if len(curve_js)==0:
         print("Us QP")
         curve_js=redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base)
-
-    if 'FANUC' in robot.robot_name:
-        curve_js[:,2:]=-1*curve_js[:,2:]
-        robot.j_compensation=np.array([1,1,-1,-1,-1,-1])
 
     return curve_base,curve_normal_base,curve_js,H
 
@@ -87,10 +93,6 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd
     print(baseline_pose_filename)
     curve = np.loadtxt(filename,delimiter=',')
 
-    ## fanuc has different joint rotation axis
-    if 'FANUC' in robot.robot_name:
-        robot.j_compensation=np.array([1,1,1,1,1,1])
-
     opt=lambda_opt(curve[:,:3],curve[:,3:],robot1=robot,steps=500,v_cmd=v_cmd)
 
     #read in initial curve pose
@@ -133,18 +135,9 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd
     #########################################restore only given points, saves time##########################################################
     curve_js=opt.single_arm_stepwise_optimize(q_init,curve_base,curve_normal_base)
 
-    if 'FANUC' in robot.robot_name:
-        curve_js[:,2:]=-1*curve_js[:,2:]
-        robot.j_compensation=np.array([1,1,-1,-1,-1,-1])
-
     return curve_base,curve_normal_base,curve_js,H
 
 def redundancy_resolution_diffevo_dual(filename, base_T, robot1, robot2, q_init2_init, v_cmd=500, optimize_base=True):
-
-    if 'FANUC' in robot1.robot_name:
-        q_init2_init[2:]=-1*q_init2_init[2:]
-        robot1.j_compensation=np.array([1,1,1,1,1,1])
-        robot2.j_compensation=np.array([1,1,1,1,1,1])
     
     relative_path=read_csv(filename,header=None).values
     
@@ -229,11 +222,5 @@ def redundancy_resolution_diffevo_dual(filename, base_T, robot1, robot2, q_init2
     base_T=np.eye(4)
     base_T[:-1,-1]=base2_p
     base_T[:3,:3]=base2_R
-
-    if 'FANUC' in robot1.robot_name:
-        robot1.j_compensation=np.array([1,1,-1,-1,-1,-1])
-        robot2.j_compensation=np.array([1,1,-1,-1,-1,-1])
-        q_out1[:,2:]=-1*q_out1[:,2:]
-        q_out2[:,2:]=-1*q_out2[:,2:]
 
     return q_out1,q_out2,base_T

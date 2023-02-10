@@ -159,7 +159,7 @@ class robot_obj(object):
 		q_all=np.array(q_all)
 		if q_all.ndim==1:
 			q=q_all
-			pose_temp=self.tesseract_robot.fwdkin(np.multiply(q,self.j_compensation))	
+			pose_temp=self.tesseract_robot.fwdkin(q)	
 
 			if world:
 				pose_temp.p=self.base_H[:3,:3]@pose_temp.p+self.base_H[:3,-1]
@@ -169,7 +169,7 @@ class robot_obj(object):
 			pose_p_all=[]
 			pose_R_all=[]
 			for q in q_all:
-				pose_temp=self.tesseract_robot.fwdkin(np.multiply(q,self.j_compensation))	
+				pose_temp=self.tesseract_robot.fwdkin(q)	
 				if world:
 					pose_temp.p=self.base_H[:3,:3]@pose_temp.p+self.base_H[:3,-1]
 					pose_temp.R=self.base_H[:3,:3]@pose_temp.R
@@ -180,7 +180,6 @@ class robot_obj(object):
 			return Transform_all(pose_p_all,pose_R_all)
 	
 	def fwd_j456(self,q):
-		q = np.multiply(q,self.j_compensation)
 		if (self.robot.joint_lower_limit is not None and self.robot.joint_upper_limit is not None):
 			assert np.greater_equal(q, self.robot.joint_lower_limit).all(), "Specified joints out of range"
 			assert np.less_equal(q, self.robot.joint_upper_limit).all(), "Specified joints out of range"
@@ -195,19 +194,19 @@ class robot_obj(object):
 		return Transform(R, p)
 
 	def jacobian(self,q):
-		return self.tesseract_robot.jacobian(np.multiply(q,self.j_compensation))
+		return self.tesseract_robot.jacobian(q)
 
 	def inv(self,p,R,last_joints=[]):
 		# self.check_tesseract_robot()
 		if len(last_joints)==0:
-			return np.multiply(self.tesseract_robot.invkin(Transform(R,p),np.zeros(len(self.joint_vel_limit))),self.j_compensation)
+			return self.tesseract_robot.invkin(Transform(R,p),np.zeros(len(self.joint_vel_limit)))
 		else:	###sort solutions
-			last_joints=np.multiply(last_joints,self.j_compensation)
+			last_joints=last_joints
 			theta_v=self.tesseract_robot.invkin(Transform(R,p),last_joints)
 			eq_theta_v=equivalent_configurations(self.robot, theta_v, last_joints)
 			theta_v.extend(eq_theta_v)
 			theta_dist = np.linalg.norm(np.subtract(theta_v,last_joints), axis=1)
-			return [np.multiply(theta_v[i],self.j_compensation) for i in list(np.argsort(theta_dist))]
+			return [theta_v[i] for i in list(np.argsort(theta_dist))]
 
 			
 #ALL in mm

@@ -70,7 +70,8 @@ class lambda_opt(object):
 		q_out=[q_init]
 		Kw=1
 		for i in range(len(curve)):
-			# print(i)
+			if i%100==0:
+				print(i)
 			try:
 				now=time.time()
 				error_fb=999
@@ -84,7 +85,10 @@ class lambda_opt(object):
 
 					pose_now=self.robot1.fwd(q_all[-1])
 					error_fb=np.linalg.norm(pose_now.p-curve[i])+Kw*np.linalg.norm(pose_now.R[:,-1]-curve_normal[i])
-					
+					if error_fb>1000:
+						print("error_fb:",error_fb)
+						raise AssertionError
+
 					Kq=.01*np.eye(6)    #small value to make sure positive definite
 					KR=np.eye(3)        #gains for position and orientation error
 

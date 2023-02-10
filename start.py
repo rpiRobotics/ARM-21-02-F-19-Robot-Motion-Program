@@ -259,7 +259,8 @@ class SprayGUI(QDialog):
             if 'ABB' in robot1_choose:
                 self.robot1MotionSend=MotionSendABB             ###TODO: add realrobot argument (IP, repeatibility)
             elif 'FANUC' in robot1_choose:
-                self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                # self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/paintgun.csv',d=50,acc_dict_path='config/'+robot1_choose+'_acc.pickle')
+                self.robot1=robot_obj(robot1_choose,'config/'+robot1_choose+'_robot_default_config.yml',tool_file_path='config/laser_ge.csv',d=0,acc_dict_path='config/'+robot1_choose+'_acc.pickle')
                 self.robot1MotionSend=MotionSendFANUC             ###TODO: add tool from robot def (FANUC)  
         self.robot1_name=robot1_choose
 
