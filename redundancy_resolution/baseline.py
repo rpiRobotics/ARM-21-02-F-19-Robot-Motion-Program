@@ -49,18 +49,19 @@ def curve_frame_conversion(curve,curve_normal,H):
 
 	return curve_base,curve_normal_base
 
-def find_js(robot,curve,curve_normal,use_initR=False):
+def find_js(robot,curve,curve_normal,use_init_nx=False):
 	###find all possible inv solution for given curve
 
 	###get R first 
 	curve_R=[]
 	for i in range(len(curve)-1):
-		# R_curve=direction2R(curve_normal[i],-curve[i+1]+curve[i])	
-		R_curve=direction2R_Y(curve_normal[i],curve[i+1]-curve[i])
-		if len(curve_R)!=0 and use_initR:
-			curve_R.append(curve_R[-1])
+		if use_init_nx:
+			# R_curve=direction2R_Y(curve_normal[i],curve[1]-curve[0])
+			R_curve=direction2R(curve_normal[i],curve[1]-curve[0])
 		else:
-			curve_R.append(R_curve)
+			# R_curve=direction2R_Y(curve_normal[i],curve[i+1]-curve[i])
+			R_curve=direction2R(curve_normal[i],curve[1]-curve[0])
+		curve_R.append(R_curve)
 
 	###insert initial orientation
 	curve_R.insert(0,curve_R[0])

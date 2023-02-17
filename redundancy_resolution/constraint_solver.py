@@ -104,7 +104,7 @@ class lambda_opt(object):
 					ezdotd=(curve_normal[i]-pose_now.R[:,-1])
 
 					f=-np.dot(np.transpose(Jp),vd)-Kw*np.dot(np.transpose(JR_mod),ezdotd)
-					qdot=solve_qp(H,f,lb=self.robot1.lower_limit-q_all[-1]+self.lim_factor*np.ones(6),ub=self.robot1.upper_limit-q_all[-1]-self.lim_factor*np.ones(6))
+					qdot=solve_qp(H,f,lb=self.robot1.lower_limit-q_all[-1]+self.lim_factor*np.ones(6),ub=self.robot1.upper_limit-q_all[-1]-self.lim_factor*np.ones(6),solver='quadprog')
 
 					#avoid getting stuck
 					if abs(error_fb-error_fb_prev)<0.0001:
@@ -547,6 +547,12 @@ class lambda_opt(object):
 			return 999
 
 		speed=traj_speed_est(self.robot1,q_out,self.lam,self.v_cmd)
+
+		###TODO: FIX TESSERACT MEMORY ERROR
+		if self.tes_env:
+			self.tes_env.update_pose(self.curve_name,H_from_RT(R_curve,shift/1000.))
+			if self.tes_env.check_collision_single(self.robot1.robot_name,self.curve_name,q_out):
+				return 999
 
 		
 		print(min(speed))

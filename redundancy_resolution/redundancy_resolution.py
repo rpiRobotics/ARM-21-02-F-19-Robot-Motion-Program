@@ -9,8 +9,6 @@ def redundancy_resolution_baseline(filename, robot):
     curve = np.loadtxt(filename,delimiter=',')
 
     total_len=len(curve)
-    curve=curve[int(total_len/4):]
-    # curve=curve[int(total_len/2):]
     
     H = pose_opt(robot,curve[:,:3],curve[:,3:])
     curve_base,curve_normal_base=curve_frame_conversion(curve[:,:3],curve[:,3:],H)
@@ -25,8 +23,8 @@ def redundancy_resolution_baseline(filename, robot):
         J_min=np.array(J_min)
         curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
     else:
-        print("Us Init R")
-        curve_js_all=find_js(robot,curve_base,curve_normal_base,use_initR=True)
+        print("Us Init Tangent direction")
+        curve_js_all=find_js(robot,curve_base,curve_normal_base,use_init_nx=True)
         if len(curve_js_all) > 0:
             J_min=[]
             for i in range(len(curve_js_all)):
@@ -150,12 +148,12 @@ def redundancy_resolution_diffevo_dual(filename, base_T, robot1, robot2, q_init2
 
     rot_init=0
 
-    input_x = np.append(q_init2_init,base2_p[:2])
-    input_x = np.append(input_x,base2_theta)
-    input_x = np.append(input_x,rot_init)
+    x_init = np.append(q_init2_init,base2_p[:2])
+    x_init = np.append(x_init,base2_theta)
+    x_init = np.append(x_init,rot_init)
     # print(input_x)
     print("Sanity Check")
-    print(opt.dual_arm_opt_w_pose_3dof(input_x))
+    print(opt.dual_arm_opt_w_pose_3dof(x_init))
     print("Sanity Check Done")
 
     if optimize_base:
@@ -163,7 +161,7 @@ def redundancy_resolution_diffevo_dual(filename, base_T, robot1, robot2, q_init2
         upper_limit=np.hstack((robot2.upper_limit,[2000,2000],[np.pi],[np.pi]))
         bnds=tuple(zip(lower_limit,upper_limit))
         res = differential_evolution(opt.dual_arm_opt_w_pose_3dof, bnds, args=None,workers=-1,
-                                        x0 = np.hstack((q_init2_init,base2_p[0],base2_p[1],base2_theta,[rot_init])),
+                                        x0 = x_init,
                                         strategy='best1bin', maxiter=700,
                                         popsize=15, tol=1e-10,
                                         mutation=(0.5, 1), recombination=0.7,
