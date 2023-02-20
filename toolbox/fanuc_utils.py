@@ -11,7 +11,8 @@ from robots_def import *
 from toolbox_circular_fit import *
 
 class MotionSendFANUC(object):
-    def __init__(self,group=1,uframe=1,utool=2,robot_ip='127.0.0.2',robot1=m710ic(d=50),robot2=m900ia(),group2=2,uframe2=1,utool2=2,robot_ip2=None) -> None:
+    def __init__(self,group=1,uframe=1,utool=2,robot_ip='127.0.0.2',robot1=m710ic(d=50),robot2=m900ia(),group2=2,uframe2=1,utool2=2,robot_ip2=None,\
+        uframe1_T=Transform(np.eye(3),[0,0,0]),uframe2_T=Transform(np.eye(3),[0,0,0])) -> None:
         
         self.client = FANUCClient(robot_ip)
         if robot_ip2 is not None:
@@ -20,11 +21,20 @@ class MotionSendFANUC(object):
         # robot1 roboguide info
         self.group = group
         self.uframe = uframe
+        try:
+            self.uframe1_base_T = uframe1_T.inv()*Transform(np.eye(3),-1*robot1.P[:,0])
+        except:
+            self.uframe1_base_T = uframe1_T.inv()*Transform(np.eye(3),-1*robot1.robot.P[:,0])
         self.utool = utool
 
         # robot2 roboguide info
         self.group2 = group2
         self.uframe2 = uframe2
+        self.uframe2_T = uframe2_T
+        try:
+            self.uframe2_base_T = uframe2_T.inv()*Transform(np.eye(3),-1*robot2.P[:,0])
+        except:
+            self.uframe2_base_T = uframe2_T.inv()*Transform(np.eye(3),-1*robot2.robot.P[:,0])
         self.utool2 = utool2
 
         # robots
@@ -42,11 +52,10 @@ class MotionSendFANUC(object):
         if utool is None:
             utool=self.utool
 
-        tp_pre = TPMotionProgram(self.utool,self.uframe)
+        tp_pre = TPMotionProgram()
 
         # move to start
-        j0 = joint2robtarget(q_bp[0][0],robot,group,uframe,utool)
-        # j0.trans[2]-=450
+        j0 = joint2robtarget(q_bp[0][0],robot,group,uframe,utool,self.uframe1_base_T)
         tp_pre.moveJ(j0,50,'%',-1)
         tp_pre.moveJ(j0,5,'%',-1)
         client.execute_motion_program(tp_pre)
@@ -59,7 +68,7 @@ class MotionSendFANUC(object):
             all_speed=np.array(speed)
 
         # start traj
-        tp = TPMotionProgram(self.utool,self.uframe)
+        tp = TPMotionProgram()
         for i in range(1,len(primitives)):
             if i == len(primitives)-1:
                 this_zone = -1
@@ -70,19 +79,15 @@ class MotionSendFANUC(object):
             this_speed=int(all_speed[i])
 
             if primitives[i]=='movel_fit':
-                robt = joint2robtarget(q_bp[i][0],robot,group,uframe,utool)
-                # robt.trans[2]-=450
+                robt = joint2robtarget(q_bp[i][0],robot,group,uframe,utool,self.uframe1_base_T)
                 tp.moveL(robt,this_speed,'mmsec',this_zone)
             elif primitives[i]=='movec_fit':
-                robt_mid = joint2robtarget(q_bp[i][0],robot,group,uframe,utool)
-                # robt_mid.trans[2]-=450
-                robt = joint2robtarget(q_bp[i][1],robot,group,uframe,utool)
-                # robt.trans[2]-=450
+                robt_mid = joint2robtarget(q_bp[i][0],robot,group,uframe,utool,self.uframe1_base_T)
+                robt = joint2robtarget(q_bp[i][1],robot,group,uframe,utool,self.uframe1_base_T)
                 tp.moveC(robt_mid,robt,this_speed,'mmsec',this_zone)
             else: #moveJ
                 # robt = jointtarget(group,uframe,utool,np.degrees(q_bp[i][0]),[0]*6)
-                robt = joint2robtarget(q_bp[i][0],robot,group,uframe,utool)
-                # robt.trans[2]-=450
+                robt = joint2robtarget(q_bp[i][0],robot,group,uframe,utool,self.uframe1_base_T)
                 # tp.moveJ(robt,this_speed,'%',this_zone)
                 tp.moveJ(robt,this_speed,'msec',this_zone)
         return client.execute_motion_program(tp)
@@ -93,13 +98,11 @@ class MotionSendFANUC(object):
         tp_lead = TPMotionProgram(self.utool2,self.uframe2)
         #### move to start
         # robot1
-        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool)
-        # j0.trans[2]-=450
+        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
         tp_follow.moveJ(j0,50,'%',-1)
         tp_follow.moveJ(j0,5,'%',-1)
         # robot2
-        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2)
-        # j0.trans[2]-=330
+        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
         tp_lead.moveJ(j0,50,'%',-1)
         tp_lead.moveJ(j0,5,'%',-1)
         self.client.execute_motion_program_coord(tp_lead,tp_follow)
@@ -133,197 +136,27 @@ class MotionSendFANUC(object):
 
             if primitives1[i]=='movel_fit':
                 # robot1
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                # robt1.trans[2]-=450
+                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveL(robt1,this_speed,'mmsec',this_zone,option)
                 # tp_follow.moveL(robt1,1,'msec',this_zone,option)
                 # robot2
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                # robt2.trans[2]-=330
+                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveL(robt2,this_speed,'mmsec',this_zone,option)
                 # tp_lead.moveL(robt2,1,'msec',this_zone,option)
             elif primitives1[i]=='movec_fit':
                 # robot1
-                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                # robt_mid1.trans[2]-=450
-                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool)
-                # robt1.trans[2]-=450
+                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
+                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveC(robt_mid1,robt1,this_speed,'mmsec',this_zone,option)
                 # robot2
-                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                # robt_mid2.trans[2]-=330
-                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2)
-                # robt2.trans[2]-=330
+                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
+                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveC(robt_mid2,robt2,this_speed,'mmsec',this_zone,option)
             else: #moveJ
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                # robt1.trans[2]-=450
+                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 # tp_follow.moveJ(robt1,this_speed,'%',this_zone)
                 tp_follow.moveJ(robt1,this_speed,'msec',this_zone)
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                # robt2.trans[2]-=330
-                # tp_lead.moveJ(robt2,this_speed,'%',this_zone)
-                tp_lead.moveJ(robt2,this_speed,'msec',this_zone)
-        
-        return self.client.execute_motion_program_coord(tp_lead,tp_follow)
-    
-    def save_motions_multimove(self,robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,speed,zone,coord=[],folder='',progname='TMP'):
-
-        tp_follow = TPMotionProgram(self.utool,self.uframe)
-        tp_lead = TPMotionProgram(self.utool2,self.uframe2)
-        #### move to start
-        # robot1
-        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool)
-        j0.trans[2]-=450
-        tp_follow.moveJ(j0,2,'%',-1)
-        tp_follow.moveJ(j0,2,'%',-1)
-        # robot2
-        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2)
-        j0.trans[2]-=330
-        tp_lead.moveJ(j0,2,'%',-1)
-        tp_lead.moveJ(j0,2,'%',-1)
-        tp_follow.dump_program_coord(folder+progname+'_HOME',tp_lead)
-
-        #### coordinated motion in the trajectory
-        if len(coord) == 0:
-            coord = np.ones(len(primitives1))
-        assert len(coord) == len(primitives1) , "Coordination string must have the same length as primitives"
-
-        #### for speed regulation
-        if (type(speed) is int) or (type(speed) is float):
-            all_speed=np.ones(len(primitives1))*int(speed)
-        else:
-            assert len(speed) == len(primitives1), "Speed list must have the same length as primitives"
-            all_speed=np.array(speed)
-
-        #### start traj
-        tp_follow = TPMotionProgram(self.utool,self.uframe)
-        tp_lead = TPMotionProgram(self.utool2,self.uframe2)
-        for i in range(1,len(primitives1)):
-            if i == len(primitives1)-1:
-                # this_zone = zone
-                this_zone = -1
-            else:
-                this_zone = zone
-            option=''
-            if coord[i]:
-                option='COORD'
-            # speed
-            this_speed=int(all_speed[i])
-
-            if primitives1[i]=='movel_fit':
-                # robot1
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt1.trans[2]-=450
-                tp_follow.moveL(robt1,this_speed,'mmsec',this_zone,option)
-                # tp_follow.moveL(robt1,1,'msec',this_zone,option)
-                # robot2
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt2.trans[2]-=330
-                tp_lead.moveL(robt2,this_speed,'mmsec',this_zone,option)
-                # tp_lead.moveL(robt2,1,'msec',this_zone,option)
-            elif primitives1[i]=='movec_fit':
-                # robot1
-                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt_mid1.trans[2]-=450
-                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool)
-                robt1.trans[2]-=450
-                tp_follow.moveC(robt_mid1,robt1,this_speed,'mmsec',this_zone,option)
-                # robot2
-                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt_mid2.trans[2]-=330
-                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2)
-                robt2.trans[2]-=330
-                tp_lead.moveC(robt_mid2,robt2,this_speed,'mmsec',this_zone,option)
-            else: #moveJ
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt1.trans[2]-=450
-                # tp_follow.moveJ(robt1,this_speed,'%',this_zone)
-                tp_follow.moveJ(robt1,this_speed,'msec',this_zone)
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt2.trans[2]-=330
-                # tp_lead.moveJ(robt2,this_speed,'%',this_zone)
-                tp_lead.moveJ(robt2,this_speed,'msec',this_zone)
-        tp_follow.dump_program_coord(folder+progname,tp_lead)
-
-        return
-    
-    def exec_motions_multimove_test(self,robot1,robot2,primitives1,primitives2,p_bp1,p_bp2,q_bp1,q_bp2,speed,zone,coord=[]):
-
-        tp_follow = TPMotionProgram(self.utool,self.uframe)
-        tp_lead = TPMotionProgram(self.utool2,self.uframe2)
-        #### move to start
-        # robot1
-        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool)
-        j0.trans[2]-=450
-        tp_follow.moveJ(j0,50,'%',-1)
-        tp_follow.moveJ(j0,5,'%',-1)
-        # robot2
-        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2)
-        j0.trans[2]-=330
-        tp_lead.moveJ(j0,50,'%',-1)
-        tp_lead.moveJ(j0,5,'%',-1)
-        self.client.execute_motion_program_coord(tp_lead,tp_follow)
-
-        #### coordinated motion in the trajectory
-        if len(coord) == 0:
-            coord = np.ones(len(primitives1))
-        assert len(coord) == len(primitives1) , "Coordination string must have the same length as primitives"
-
-        #### for speed regulation
-        if (type(speed) is int) or (type(speed) is float):
-            all_speed=np.ones(len(primitives1))*int(speed)
-        else:
-            assert len(speed) == len(primitives1), "Speed list must have the same length as primitives"
-            all_speed=np.array(speed)
-
-        #### start traj
-        tp_follow = TPMotionProgram(self.utool,self.uframe)
-        tp_lead = TPMotionProgram(self.utool2,self.uframe2)
-        test_length=[1,20]
-        for i in test_length:
-            if i == len(test_length)-1:
-                # this_zone = zone
-                this_zone = -1
-            else:
-                this_zone = zone
-            option=''
-            if coord[i]:
-                option='COORD'
-            # speed
-            this_speed=int(all_speed[i])
-
-            if primitives1[i]=='movel_fit':
-                # robot1
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt1.trans[2]-=450
-                tp_follow.moveL(robt1,this_speed,'mmsec',this_zone,option)
-                # tp_follow.moveL(robt1,1,'msec',this_zone,option)
-                # robot2
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt2.trans[2]-=330
-                tp_lead.moveL(robt2,this_speed,'mmsec',this_zone,option)
-                # tp_lead.moveL(robt2,1,'msec',this_zone,option)
-            elif primitives1[i]=='movec_fit':
-                # robot1
-                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt_mid1.trans[2]-=450
-                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool)
-                robt1.trans[2]-=450
-                tp_follow.moveC(robt_mid1,robt1,this_speed,'mmsec',this_zone,option)
-                # robot2
-                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt_mid2.trans[2]-=330
-                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2)
-                robt2.trans[2]-=330
-                tp_lead.moveC(robt_mid2,robt2,this_speed,'mmsec',this_zone,option)
-            else: #moveJ
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt1.trans[2]-=450
-                # tp_follow.moveJ(robt1,this_speed,'%',this_zone)
-                tp_follow.moveJ(robt1,this_speed,'msec',this_zone)
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt2.trans[2]-=330
+                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 # tp_lead.moveJ(robt2,this_speed,'%',this_zone)
                 tp_lead.moveJ(robt2,this_speed,'msec',this_zone)
         
@@ -335,11 +168,11 @@ class MotionSendFANUC(object):
         tp_lead = TPMotionProgram(self.utool2,self.uframe2)
         #### move to start
         # robot1
-        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool)
+        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
         tp_follow.moveJ(j0,50,'%',-1)
         tp_follow.moveJ(j0,5,'%',-1)
         # robot2
-        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2)
+        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
         tp_lead.moveJ(j0,50,'%',-1)
         tp_lead.moveJ(j0,5,'%',-1)
         self.client.execute_motion_program_multi(tp_follow,tp_lead)
@@ -365,16 +198,16 @@ class MotionSendFANUC(object):
 
             if primitives1[i]=='movel_fit':
                 # robot1
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
+                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveL(robt1,this_speed,'mmsec',this_zone,option)
                 # tp_follow.moveL(robt1,this_speed,'msec',this_zone,option)
             elif primitives1[i]=='movec_fit':
                 # robot1
-                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool)
+                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
+                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveC(robt_mid1,robt1,this_speed,'mmsec',this_zone,option)
             else: #moveJ
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
+                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveJ(robt1,this_speed,'%',this_zone)
                 # tp_follow.moveJ(robt1,this_speed,'msec',this_zone)
         
@@ -399,16 +232,16 @@ class MotionSendFANUC(object):
 
             if primitives2[i]=='movel_fit':
                 # robot2
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
+                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveL(robt2,this_speed,'mmsec',this_zone,option)
                 # tp_lead.moveL(robt2,this_speed,'msec',this_zone,option)
             elif primitives2[i]=='movec_fit':
                 # robot2
-                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2)
+                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
+                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveC(robt_mid2,robt2,this_speed,'mmsec',this_zone,option)
             else: #moveJ
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
+                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveJ(robt2,this_speed,'%',this_zone)
                 # tp_lead.moveJ(robt2,this_speed,'msec',this_zone)
         
@@ -420,11 +253,11 @@ class MotionSendFANUC(object):
         tp_lead = TPMotionProgram(self.utool2,self.uframe2)
         #### move to start
         # robot1
-        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool)
+        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
         tp_follow.moveJ(j0,50,'%',-1)
         tp_follow.moveJ(j0,5,'%',-1)
         # robot2
-        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2)
+        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
         tp_lead.moveJ(j0,50,'%',-1)
         tp_lead.moveJ(j0,5,'%',-1)
         self.client.execute_motion_program_thread(tp_follow,tp_lead)
@@ -450,16 +283,16 @@ class MotionSendFANUC(object):
 
             if primitives1[i]=='movel_fit':
                 # robot1
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
+                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveL(robt1,this_speed,'mmsec',this_zone,option)
                 # tp_follow.moveL(robt1,this_speed,'msec',this_zone,option)
             elif primitives1[i]=='movec_fit':
                 # robot1
-                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool)
+                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
+                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveC(robt_mid1,robt1,this_speed,'mmsec',this_zone,option)
             else: #moveJ
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
+                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveJ(robt1,this_speed,'%',this_zone)
                 # tp_follow.moveJ(robt1,this_speed,'msec',this_zone)
         
@@ -484,16 +317,16 @@ class MotionSendFANUC(object):
 
             if primitives2[i]=='movel_fit':
                 # robot2
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
+                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveL(robt2,this_speed,'mmsec',this_zone,option)
                 # tp_lead.moveL(robt2,this_speed,'msec',this_zone,option)
             elif primitives2[i]=='movec_fit':
                 # robot2
-                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2)
+                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
+                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveC(robt_mid2,robt2,this_speed,'mmsec',this_zone,option)
             else: #moveJ
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
+                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveJ(robt2,this_speed,'%',this_zone)
                 # tp_lead.moveJ(robt2,this_speed,'msec',this_zone)
         
@@ -505,11 +338,11 @@ class MotionSendFANUC(object):
         tp_lead = TPMotionProgram(self.utool2,self.uframe2)
         #### move to start
         # robot1
-        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool)
+        j0 = joint2robtarget(q_bp1[0][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
         tp_follow.moveJ(j0,50,'%',-1)
         tp_follow.moveJ(j0,5,'%',-1)
         # robot2
-        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2)
+        j0 = joint2robtarget(q_bp2[0][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
         tp_lead.moveJ(j0,50,'%',-1)
         tp_lead.moveJ(j0,5,'%',-1)
         self.client.execute_motion_program_connect(tp_follow,tp_lead)
@@ -535,16 +368,16 @@ class MotionSendFANUC(object):
 
             if primitives1[i]=='movel_fit':
                 # robot1
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
+                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveL(robt1,this_speed,'mmsec',this_zone,option)
                 # tp_follow.moveL(robt1,this_speed,'msec',this_zone,option)
             elif primitives1[i]=='movec_fit':
                 # robot1
-                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
-                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool)
+                robt_mid1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
+                robt1 = joint2robtarget(q_bp1[i][1],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveC(robt_mid1,robt1,this_speed,'mmsec',this_zone,option)
             else: #moveJ
-                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool)
+                robt1 = joint2robtarget(q_bp1[i][0],robot1,self.group,self.uframe,self.utool,self.uframe1_base_T)
                 tp_follow.moveJ(robt1,this_speed,'%',this_zone)
                 # tp_follow.moveJ(robt1,this_speed,'msec',this_zone)
         
@@ -569,16 +402,16 @@ class MotionSendFANUC(object):
 
             if primitives2[i]=='movel_fit':
                 # robot2
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
+                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveL(robt2,this_speed,'mmsec',this_zone,option)
                 # tp_lead.moveL(robt2,this_speed,'msec',this_zone,option)
             elif primitives2[i]=='movec_fit':
                 # robot2
-                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
-                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2)
+                robt_mid2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
+                robt2 = joint2robtarget(q_bp2[i][1],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveC(robt_mid2,robt2,this_speed,'mmsec',this_zone,option)
             else: #moveJ
-                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2)
+                robt2 = joint2robtarget(q_bp2[i][0],robot2,self.group2,self.uframe2,self.utool2,self.uframe2_base_T)
                 tp_lead.moveJ(robt2,this_speed,'%',this_zone)
                 # tp_lead.moveJ(robt2,this_speed,'msec',this_zone)
         
@@ -600,7 +433,6 @@ class MotionSendFANUC(object):
             q4=df['J14'].tolist()[1:]
             q5=df['J15'].tolist()[1:]
             q6=df['J16'].tolist()[1:]
-
         curve_exe_js=np.radians(np.vstack((q1,q2,q3,q4,q5,q6)).T.astype(float))
         timestamp=np.array(df['timestamp'].tolist()[1:]).astype(float)*1e-3 # from msec to sec
 

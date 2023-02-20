@@ -11,6 +11,12 @@ def redundancy_resolution_baseline(filename, robot):
     total_len=len(curve)
     
     H = pose_opt(robot,curve[:,:3],curve[:,3:])
+
+    rot_in_j1=np.radians(-30)
+    H[:3,3]=np.matmul(rot([0,0,1],rot_in_j1),H[:3,3])
+    # H[:3,0]+=50
+    H[:3,:3]=np.matmul(rot([0,0,1],rot_in_j1),H[:3,:3])
+
     curve_base,curve_normal_base=curve_frame_conversion(curve[:,:3],curve[:,3:],H)
     
     curve_js_all=find_js(robot,curve_base,curve_normal_base)

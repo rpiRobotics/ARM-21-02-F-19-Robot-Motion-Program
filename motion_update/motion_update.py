@@ -222,7 +222,7 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
         ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
     Path(ilc_output).mkdir(exist_ok=True)
 
-    ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot)
+    ms = robotMotionSend(group=1,uframe=2,utool=3,robot_ip=robot_ip,robot1=robot)
 
     breakpoints,primitives,p_bp,q_bp,_=ms.extract_data_from_cmd(filepath+'/command.csv')
 

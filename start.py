@@ -671,7 +671,7 @@ class SprayGUI(QDialog):
                 self.curvejs1_filename = solution_dir+'/Curve_js1.csv'
                 self.curvejs2_filename = solution_dir+'/Curve_js2.csv'
             else:
-                self.curvejs1_filename = solution_dir+'/Curve_js.csv'
+                self.curvejs1_filename = solution_dir+'/Curve_js1.csv'
             self.curvejs_solutionDirtext.setText(solution_dir)
         except Exception as e:
             print(e)
@@ -771,7 +771,7 @@ class SprayGUI(QDialog):
         self.dualRobot_box.setEnabled(False)
         ## final result setup
         self.moprog_thread.finished.connect(lambda: self.moprog_runButton_greedy.setEnabled(True))
-        self.moprog_thread.finished.connect(lambda: self.total_seg_box.setEnabled(True))
+        self.moprog_thread.finished.connect(lambda: self.greedy_thresh_box.setEnabled(True))
         self.moprog_thread.finished.connect(lambda: self.dualRobot_box.setEnabled(True))
 
         ## start thread

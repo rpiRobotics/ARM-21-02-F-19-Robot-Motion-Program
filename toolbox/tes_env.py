@@ -43,9 +43,13 @@ class Tess_Env(object):
 		
 
 		######tesseract environment setup:
-		with open(urdf_path+'combined.urdf','r') as f:
+		# with open(urdf_path+'combined.urdf','r') as f:
+		# 	combined_urdf = f.read()
+		# with open(urdf_path+'combined.srdf','r') as f:
+		# 	combined_srdf = f.read()
+		with open(urdf_path+'fanuc_cell.urdf','r') as f:
 			combined_urdf = f.read()
-		with open(urdf_path+'combined.srdf','r') as f:
+		with open(urdf_path+'fanuc_cell.srdf','r') as f:
 			combined_srdf = f.read()
 
 		self.t_env= Environment()

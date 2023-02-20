@@ -1,0 +1,73 @@
+<?xml version="1.0" ?>
+<!--This does not replace URDF, and is not an extension of URDF.
+    This is a format for representing semantic information about the robot structure.
+    A URDF file must exist for this robot as well, where the joints and the links that are referenced are defined
+-->
+<robot name="fanuc_cell">
+    <!--Contact Managers plugins -->
+    <contact_managers_plugin_config filename="model://abb_1200_5_90/contact_manager_plugins.yaml"/>
+    <!--UR5-->
+    <!--GROUPS: Representation of a set of joints and links. This can be useful for specifying DOF to plan for, defining arms, end effectors, etc-->
+    <!--LINKS: When a link is specified, the parent joint of that link (if it exists) is automatically included-->
+    <!--JOINTS: When a joint is specified, the child link of that joint (which will always exist) is automatically included-->
+    <!--CHAINS: When a chain is specified, all the links along the chain (including endpoints) are included in the group. Additionally, all the joints that are parents to included links are also included. This means that joints along the chain and the parent joint of the base link are included in the group-->
+    <!--SUBGROUPS: Groups can also be formed by referencing to already defined group names-->
+
+    <group name="FANUC_lrmate200id">
+      <chain base_link="FANUC_lrmate200id_base_link" tip_link="FANUC_lrmate200id_link_6"/>
+      <group_state name="all_zero" group="FANUC_lrmate200id">
+          <joint name="FANUC_lrmate200id_joint_1" value="0" />
+          <joint name="FANUC_lrmate200id_joint_2" value="0" />
+          <joint name="FANUC_lrmate200id_joint_3" value="0" />
+          <joint name="FANUC_lrmate200id_joint_4" value="0" />
+          <joint name="FANUC_lrmate200id_joint_5" value="0" />
+          <joint name="FANUC_lrmate200id_joint_6" value="0" />
+      </group_state>
+    </group>
+
+    <group name="FANUC_m10ia">
+      <chain base_link="FANUC_m10ia_base_link" tip_link="FANUC_m10ia_link_6"/>
+      <group_state name="all_zero" group="FANUC_m10ia">
+          <joint name="FANUC_m10ia_joint_1" value="0" />
+          <joint name="FANUC_m10ia_joint_2" value="0" />
+          <joint name="FANUC_m10ia_joint_3" value="0" />
+          <joint name="FANUC_m10ia_joint_4" value="0" />
+          <joint name="FANUC_m10ia_joint_5" value="0" />
+          <joint name="FANUC_m10ia_joint_6" value="0" />
+      </group_state>
+    </group>
+  <!--GROUP STATES: Purpose: Define a named state for a particular group, in
+    terms of joint values. This is useful to define states like 'folded arms'-->
+
+
+  <!--DISABLE COLLISIONS: By default it is assumed that any link of the robot
+    could potentially come into collision with any other link in the robot.
+    This tag disables collision checking between a specified pair of links. -->
+
+  <!-- FANUC_lrmate200id -->
+  <disable_collisions link1="FANUC_lrmate200id_base_link" link2="FANUC_lrmate200id_link_1" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_1" link2="FANUC_lrmate200id_link_2" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_2" link2="FANUC_lrmate200id_link_3" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_2" link2="FANUC_lrmate200id_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_lrmate200id_link_2" link2="FANUC_lrmate200id_link_6" reason="Never" />
+  <disable_collisions link1="FANUC_lrmate200id_link_3" link2="FANUC_lrmate200id_link_4" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_3" link2="FANUC_lrmate200id_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_lrmate200id_link_3" link2="FANUC_lrmate200id_link_6" reason="Never" />
+  <disable_collisions link1="FANUC_lrmate200id_link_4" link2="FANUC_lrmate200id_link_5" reason="Adjacent" />
+  <disable_collisions link1="FANUC_lrmate200id_link_5" link2="FANUC_lrmate200id_link_6" reason="Adjacent" />
+  <!-- FANUC_m10ia -->
+  <disable_collisions link1="FANUC_m10ia_base_link" link2="FANUC_m10ia_link_1" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_1" link2="FANUC_m10ia_link_2" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_2" link2="FANUC_m10ia_link_3" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_2" link2="FANUC_m10ia_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_link_2" link2="FANUC_m10ia_link_6" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_link_3" link2="FANUC_m10ia_link_4" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_3" link2="FANUC_m10ia_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_link_3" link2="FANUC_m10ia_link_6" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_link_4" link2="FANUC_m10ia_link_5" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_5" link2="FANUC_m10ia_link_6" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_link_6" link2="FANUC_m10ia_dcstool" reason="Adjacent" />
+  <disable_collisions link1="FANUC_m10ia_dcstool" link2="FANUC_m10ia_link_5" reason="Never" />
+  <disable_collisions link1="FANUC_m10ia_dcstool" link2="FANUC_m10ia_link_3" reason="Never" />
+
+</robot>

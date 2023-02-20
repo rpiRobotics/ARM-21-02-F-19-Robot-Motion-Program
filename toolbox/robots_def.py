@@ -186,7 +186,7 @@ class robot_obj(object):
 
 		p = self.robot.P[:,[1]]
 		R = np.identity(3)
-		for i in xrange(1,len(self.robot.joint_type)-1):
+		for i in range(1,len(self.robot.joint_type)-1):
 			R = R.dot(rot(self.robot.H[:,[i]],q[i]))
 			p = p + R.dot(self.robot.P[:,[i+1]])
 		p=np.reshape(p,(3,))
@@ -482,7 +482,7 @@ class m900ia(object):
 
 		p = self.robot_def.P[:,[1]]
 		R = np.identity(3)
-		for i in xrange(1,len(self.robot_def.joint_type)-1):
+		for i in range(1,len(self.robot_def.joint_type)-1):
 			R = R.dot(rot(self.robot_def.H[:,[i]],q[i]))
 			p = p + R.dot(self.robot_def.P[:,[i+1]])
 		p=np.reshape(p,(3,))
@@ -547,7 +547,7 @@ class m710ic(object):
 
 		p = self.robot_def.P[:,[1]]
 		R = np.identity(3)
-		for i in xrange(1,len(self.robot_def.joint_type)-1):
+		for i in range(1,len(self.robot_def.joint_type)-1):
 			R = R.dot(rot(self.robot_def.H[:,[i]],q[i]))
 			p = p + R.dot(self.robot_def.P[:,[i+1]])
 		p=np.reshape(p,(3,))
@@ -699,7 +699,7 @@ class m10ia(object):
 
 		p = self.robot_def.P[:,[1]]
 		R = np.identity(3)
-		for i in xrange(1,len(self.robot_def.joint_type)-1):
+		for i in range(1,len(self.robot_def.joint_type)-1):
 			R = R.dot(rot(self.robot_def.H[:,[i]],q[i]))
 			p = p + R.dot(self.robot_def.P[:,[i+1]])
 		p=np.reshape(p,(3,))
@@ -824,7 +824,7 @@ class lrmate200id(object):
 
 		p = self.robot_def.P[:,[1]]
 		R = np.identity(3)
-		for i in xrange(1,len(self.robot_def.joint_type)-1):
+		for i in range(1,len(self.robot_def.joint_type)-1):
 			R = R.dot(rot(self.robot_def.H[:,[i]],q[i]))
 			p = p + R.dot(self.robot_def.P[:,[i+1]])
 		p=np.reshape(p,(3,))
