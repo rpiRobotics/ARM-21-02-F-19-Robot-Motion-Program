@@ -3,7 +3,6 @@ import sys, copy
 sys.path.append('train_data/')
 sys.path.append('toolbox/')
 from toolbox_circular_fit import *
-from abb_motion_program_exec import *
 from robots_def import *
 import matplotlib.pyplot as plt
 from scipy.interpolate import UnivariateSpline, BPoly

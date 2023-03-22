@@ -13,10 +13,19 @@ from pandas import *
 from toolbox.robots_def import *
 from redundancy_resolution.redundancy_resolution import *
 from cmd_gen.cmd_gen import *
-from toolbox.abb_utils import *
-from toolbox.fanuc_utils import *
 from motion_update.motion_update import *
-from toolbox.tes_env import *
+try:
+    from toolbox.abb_utils import *
+except:
+    print("Start without ABB Functions")
+try:
+    from toolbox.fanuc_utils import *
+except:
+    print("Start without FANUC Functions")
+try:
+    from toolbox.tes_env import *
+except:
+    print("Start without tesseract visualizer")
 import yaml
 
 def msgbtn(i):
