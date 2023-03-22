@@ -920,19 +920,52 @@ class SprayGUI(QDialog):
         self.visual_runButton.clicked.connect(self.run_Visualization)
 
         ### for FANUC utool
-        if self.dualRobot_box.isChecked():
-            # if "FANUC" in self.robot1.robot_name:
-            utool2_layout=QHBoxLayout()
-            utool2_label=QLabel('Robot2 Utool')
-            utool2_label.setFont(self.bold)
-            self.utool2_box=QSpinBox()
-            self.utool2_box.setMinimum(1)
-            self.utool2_box.setMaximum(20)
-            self.utool2_box.setValue(2)
-            self.utool2_box.setSingleStep(1)
-            utool2_label.setBuddy(self.utool2_box)
-            utool2_layout.addWidget(utool2_label)
-            utool2_layout.addWidget(self.utool2_box)
+        uframe_utool1_layout=QHBoxLayout()
+        uframe1_label=QLabel('FANUC: Robot1 UFrame')
+        uframe1_label.setFont(self.bold)
+        self.uframe1_box=QSpinBox()
+        self.uframe1_box.setMinimum(1)
+        self.uframe1_box.setMaximum(20)
+        self.uframe1_box.setValue(2)
+        self.uframe1_box.setSingleStep(1)
+        uframe1_label.setBuddy(self.uframe1_box)
+        utool1_label=QLabel('Robot1 Utool')
+        utool1_label.setFont(self.bold)
+        self.utool1_box=QSpinBox()
+        self.utool1_box.setMinimum(1)
+        self.utool1_box.setMaximum(20)
+        self.utool1_box.setValue(2)
+        self.utool1_box.setSingleStep(1)
+        utool1_label.setBuddy(self.utool1_box)
+
+        uframe_utool1_layout.addWidget(uframe1_label)
+        uframe_utool1_layout.addWidget(self.uframe1_box)
+        uframe_utool1_layout.addWidget(utool1_label)
+        uframe_utool1_layout.addWidget(self.utool1_box)
+
+        uframe_utool2_layout=QHBoxLayout()
+        uframe2_label=QLabel('FANUC: Robot2 UFrame')
+        uframe2_label.setFont(self.bold)
+        self.uframe2_box=QSpinBox()
+        self.uframe2_box.setMinimum(1)
+        self.uframe2_box.setMaximum(20)
+        self.uframe2_box.setValue(2)
+        self.uframe2_box.setSingleStep(1)
+        uframe2_label.setBuddy(self.uframe2_box)
+        utool2_label=QLabel('Robot2 Utool')
+        utool2_label.setFont(self.bold)
+        self.utool2_box=QSpinBox()
+        self.utool2_box.setMinimum(1)
+        self.utool2_box.setMaximum(20)
+        self.utool2_box.setValue(2)
+        self.utool2_box.setSingleStep(1)
+        utool2_label.setBuddy(self.utool2_box)
+
+        uframe_utool2_layout.addWidget(uframe2_label)
+        uframe_utool2_layout.addWidget(self.uframe2_box)
+        uframe_utool2_layout.addWidget(utool2_label)
+        uframe_utool2_layout.addWidget(self.utool2_box)
+        ###
 
         self.moupdate_runButton=QPushButton("Run Motion Update")
         self.moupdate_runButton.setFont(self.bold)
@@ -973,8 +1006,10 @@ class SprayGUI(QDialog):
         layout.addLayout(vellayout)
         layout.addLayout(tollayout)
         layout.addLayout(extendlayout)
+        ### for FANUC utool
+        layout.addLayout(uframe_utool1_layout)
         if self.dualRobot_box.isChecked():
-            layout.addLayout(utool2_layout)
+            layout.addLayout(uframe_utool2_layout)
         layout.addWidget(self.visual_runButton)
         layout.addWidget(self.moupdate_runButton)
         layout.addWidget(self.run4_result)
@@ -1102,9 +1137,14 @@ class SprayGUI(QDialog):
         self.moupdate_timer=Timer()
 
         try:    ###TODO: add error box popup
+            uframe1=None
+            utool1=None
+            if 'FANUC' in self.robot2_name:
+                uframe1=int(self.uframe1_box.value())
+                utool1=int(self.utool1_box.value())
             if not self.dualRobot_box.isChecked():
                 self.moupdate_worker=Worker(motion_program_update,self.cmd_pathname,self.robot1,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,self.sim_result_box.isChecked())
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,self.sim_result_box.isChecked(),uframe1,utool1)
             else:
                 if self.robot2_name is None:
                     self.run4_result.setText("Robot2 not yet choosed.")
@@ -1113,15 +1153,18 @@ class SprayGUI(QDialog):
                     self.run4_result.setText("Solution folder not chosen or Curve_js2 not exists")
                     return
                 ### set robot2
+                
+                uframe2=None
                 utool2=None
                 if 'ABB' in self.robot2_name:
                     self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
                 elif 'FANUC' in self.robot2_name:
-                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc_compensate.pickle',j_compensation=[1,1,-1,-1,-1,-1])
+                    self.robot2=robot_obj(self.robot2_name,'config/'+self.robot2_name+'_robot_default_config.yml',tool_file_path=solution_dir+'/../tcp_workpiece.csv',base_transformation_file=solution_dir+'/base.csv',acc_dict_path='config/'+self.robot2_name+'_acc.pickle')
+                    uframe2=int(self.uframe2_box.value())
                     utool2=int(self.utool2_box.value())
                 #################################
                 self.moupdate_worker=Worker(motion_program_update_dual,self.cmd_pathname,self.robot1,self.robot2,self.robot_ip,self.robot1MotionSend,vel,self.des_curve_filename,self.des_curvejs1_filename,self.des_curvejs2_filename,\
-                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,self.sim_result_box.isChecked(),utool2)
+                    errtol,angerrtol,velstdtol,extstart,extend,self.realrobot,self.sim_result_box.isChecked(),uframe1,utool1,uframe2,utool2)
             
             self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread=\
                 setup_worker_timer(self.moupdate_worker,self.moupdate_thread,self.moupdate_timer,self.moupdate_timer_thread,\

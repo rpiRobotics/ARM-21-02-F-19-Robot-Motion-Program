@@ -7,7 +7,7 @@ import os.path
 from copy import deepcopy
 
 def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs_filename,\
-    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,sim_result=False):
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,sim_result=False,uframe1=None,utool1=None):
     try:
         curve = read_csv(desired_curve_filename,header=None).values
         curve=np.array(curve)
@@ -17,12 +17,12 @@ def motion_program_update(filepath,robot,robot_ip,robotMotionSend,vel,desired_cu
         if 'ABB' in robot.robot_name:
             return error_descent_abb(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',realrobot=realrobot,sim_result=sim_result)
         if 'FANUC' in robot.robot_name:
-            return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot)
+            return error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,vel,curve,curve_js,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,uframe1=uframe1,utool1=utool1)
     except:
         traceback.print_exc()
 
 def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,desired_curve_filename,desired_curvejs1_filename,desired_curvejs2_filename,\
-    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,sim_result=False,utool2=None):
+    err_tol,angerr_tol,velstd_tol,extstart,extend,realrobot,sim_result=False,uframe1=None,utool1=None,uframe2=None,utool2=None):
 
     try:
         curve = read_csv(desired_curve_filename,header=None).values
@@ -34,7 +34,7 @@ def motion_program_update_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,v
         if 'ABB' in robot1.robot_name:
             return error_descent_abb_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2,sim_result=sim_result)
         if 'FANUC' in robot1.robot_name:
-            return error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,utool2=utool2)
+            return error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel,curve,curve_js1,curve_js2,err_tol,angerr_tol,velstd_tol,save_all_file=True,save_ls=True,save_name='final_ls',extstart=extstart,extend=extend,realrobot=realrobot,uframe1=uframe1,utool1=utool1,uframe2=uframe2,utool2=utool2)
     except:
         traceback.print_exc()
 
@@ -211,7 +211,7 @@ def error_descent_abb(filepath,robot,robot_ip,robotMotionSend,velocity,desired_c
 
 
 def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False,uframe1=2,utool1=3):
 
     curve=desired_curve
     curve_js=desired_curve_js
@@ -222,7 +222,7 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
         ilc_output=filepath+'/result_speed_'+str(velocity)+'/'
     Path(ilc_output).mkdir(exist_ok=True)
 
-    ms = robotMotionSend(group=1,uframe=2,utool=3,robot_ip=robot_ip,robot1=robot)
+    ms = robotMotionSend(group=1,uframe=uframe1,utool=utool1,robot_ip=robot_ip,robot1=robot)
 
     breakpoints,primitives,p_bp,q_bp,_=ms.extract_data_from_cmd(filepath+'/command.csv')
 
@@ -377,7 +377,7 @@ def error_descent_fanuc(filepath,robot,robot_ip,robotMotionSend,velocity,desired
     return curve_exe_js,speed,error,np.rad2deg(angle_error),breakpoints,primitives,q_bp,p_bp
 
 def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,velocity,desired_curve,desired_curve_js1,desired_curve_js2,\
-    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False,utool2=2):
+    error_tol=0.5,angerror_tol=3,velstd_tol=5,iteration_max=100,save_all_file=False,save_ls=False,save_name='',extstart=100,extend=100,realrobot=False,uframe1=2,utool1=3,uframe2=2,utool2=2):
 
     ## desired curve
     relative_path=desired_curve
@@ -393,7 +393,7 @@ def error_descent_fanuc_dual(filepath,robot1,robot2,robot_ip,robotMotionSend,vel
     base2_p=base2_T[:3,-1]
 
     # fanuc motion send tool
-    ms = robotMotionSend(group=1,uframe=1,utool=2,robot_ip=robot_ip,robot1=robot1,robot2=robot2,utool2=utool2)
+    ms = robotMotionSend(group=1,uframe=uframe1,utool=utool1,robot_ip=robot_ip,robot1=robot1,robot2=robot2,uframe2=uframe2,utool2=utool2)
     
     s=velocity # mm/sec in leader frame
     z=100 # CNT100
