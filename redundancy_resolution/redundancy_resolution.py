@@ -4,7 +4,7 @@ from .constraint_solver import *
 import numpy as np
 from fanuc_motion_program_exec_client import *
 
-def redundancy_resolution_baseline(filename, robot):
+def redundancy_resolution_baseline(filename, robot, exclude_extreme=True):
 
     curve = np.loadtxt(filename,delimiter=',')
 
@@ -19,18 +19,29 @@ def redundancy_resolution_baseline(filename, robot):
 
     curve_base,curve_normal_base=curve_frame_conversion(curve[:,:3],curve[:,3:],H)
     
-    curve_js_all=find_js(robot,curve_base,curve_normal_base)
+    curve_js=[]
+    for i in range(4):
+        if i==0: # default
+            print("x-axis as tangent vector")
+            curve_js_all=find_js(robot,curve_base,curve_normal_base,False,False,False)
+        elif i==1: # reverse x-axis as tangent vec
+            print("reversed x-axis as tangent vector")
+            curve_js_all=find_js(robot,curve_base,curve_normal_base,False,False,True)
+        elif i==2: # y-axis as tangent vec
+            print("x-axis as tangent vector")
+            curve_js_all=find_js(robot,curve_base,curve_normal_base,False,True,False)
+        else: # reverse y-axis as tangent vec
+            print("reversed x-axis as tangent vector")
+            curve_js_all=find_js(robot,curve_base,curve_normal_base,False,True,True)
 
-    if len(curve_js_all) > 0:
-        J_min=[]
-        for i in range(len(curve_js_all)):
-            J_min.append(find_j_min(robot,curve_js_all[i]))
+        if exclude_extreme:
+            curve_js_all_exclude=[]
+            for js in curve_js_all:
+                # use third joint to see if extreme
+                if js[0][2]<np.pi/2:
+                    curve_js_all_exclude.append(js)
+            curve_js_all=curve_js_all_exclude
 
-        J_min=np.array(J_min)
-        curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
-    else:
-        print("Us Init Tangent direction")
-        curve_js_all=find_js(robot,curve_base,curve_normal_base,use_init_nx=True)
         if len(curve_js_all) > 0:
             J_min=[]
             for i in range(len(curve_js_all)):
@@ -38,8 +49,19 @@ def redundancy_resolution_baseline(filename, robot):
 
             J_min=np.array(J_min)
             curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
-        else:
-            curve_js=[]
+            break
+        # else:
+        #     print("Use Init Tangent direction")
+        #     curve_js_all=find_js(robot,curve_base,curve_normal_base,use_init_nx=True)
+        #     if len(curve_js_all) > 0:
+        #         J_min=[]
+        #         for i in range(len(curve_js_all)):
+        #             J_min.append(find_j_min(robot,curve_js_all[i]))
+
+        #         J_min=np.array(J_min)
+        #         curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
+        #     else:
+        #         curve_js=[]
 
     if len(curve_js)==0:
         print("Us QP")
@@ -125,7 +147,7 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd
     theta1=res.x[-1]
 
     R_curve=rot(k,theta0)
-    H=Rp2H(p_curve,R_curve)
+    H=H_from_RT(R_curve,p_curve)
 
 
     ###get initial q

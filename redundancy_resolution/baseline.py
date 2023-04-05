@@ -4,6 +4,7 @@ import sys, traceback
 from general_robotics_toolbox import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from copy import deepcopy
 sys.path.append('../toolbox')
 sys.path.append('toolbox')
 from robots_def import *
@@ -49,23 +50,26 @@ def curve_frame_conversion(curve,curve_normal,H):
 
 	return curve_base,curve_normal_base
 
-def find_js(robot,curve,curve_normal,use_init_nx=False):
+def find_js(robot,curve,curve_normal,use_init_R=False,travel_nxy=False,reverse_axis=False):
 	###find all possible inv solution for given curve
 
 	###get R first 
 	curve_R=[]
 	for i in range(len(curve)-1):
-		if use_init_nx:
-			# R_curve=direction2R_Y(curve_normal[i],curve[1]-curve[0])
-			R_curve=direction2R(curve_normal[i],curve[1]-curve[0])
+		if use_init_R:
+			curve_i = 0
 		else:
-			# R_curve=direction2R_Y(curve_normal[i],curve[i+1]-curve[i])
-			R_curve=direction2R(curve_normal[i],curve[1]-curve[0])
+			curve_i = i
+		if not reverse_axis:
+			tangent_vec = -curve[curve_i+1]+curve[curve_i]
+		else:
+			tangent_vec = curve[curve_i+1]-curve[curve_i]
+		if travel_nxy:
+			R_curve=direction2R(curve_normal[i],tangent_vec)
+		else:
+			R_curve=direction2R_Y(curve_normal[i],tangent_vec)
 		curve_R.append(R_curve)
-
-	###insert initial orientation
-	curve_R.insert(0,curve_R[0])
-	print(curve_R[0])
+	curve_R.append(curve_R[-1])
 
 	###get all possible initial config
 	try:
@@ -78,15 +82,12 @@ def find_js(robot,curve,curve_normal,use_init_nx=False):
 	# print(np.degrees(q_inits))
 	curve_js_all=[]
 	for q_init in q_inits:
-		print(np.degrees(q_init))
 		curve_js=np.zeros((len(curve),6))
 		curve_js[0]=q_init
 		for i in range(1,len(curve)):
 			q_all=np.array(robot.inv(curve[i],curve_R[i]))
 			if len(q_all)==0:
 				#if no solution
-				print(i)
-				print(np.degrees(curve_js[i-1]))
 				print('no solution available')
 				break
 
@@ -94,8 +95,6 @@ def find_js(robot,curve,curve_normal,use_init_nx=False):
 			order=np.argsort(np.linalg.norm(temp_q,axis=1))
 			if np.linalg.norm(q_all[order[0]]-curve_js[i-1])>0.5:
 				print("large change",i)
-				print(np.degrees(q_all))
-				print(np.degrees(curve_js[i-1]))
 				break	#if large changes in q
 			else:
 				curve_js[i]=q_all[order[0]]
