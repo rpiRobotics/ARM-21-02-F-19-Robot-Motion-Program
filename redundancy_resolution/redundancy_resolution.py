@@ -28,10 +28,10 @@ def redundancy_resolution_baseline(filename, robot, exclude_extreme=True):
             print("reversed x-axis as tangent vector")
             curve_js_all=find_js(robot,curve_base,curve_normal_base,False,False,True)
         elif i==2: # y-axis as tangent vec
-            print("x-axis as tangent vector")
+            print("y-axis as tangent vector")
             curve_js_all=find_js(robot,curve_base,curve_normal_base,False,True,False)
         else: # reverse y-axis as tangent vec
-            print("reversed x-axis as tangent vector")
+            print("reversed y-axis as tangent vector")
             curve_js_all=find_js(robot,curve_base,curve_normal_base,False,True,True)
 
         if exclude_extreme:
@@ -65,11 +65,11 @@ def redundancy_resolution_baseline(filename, robot, exclude_extreme=True):
 
     if len(curve_js)==0:
         print("Us QP")
-        curve_js=redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base)
+        curve_js=redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base,exclude_extreme)
 
     return curve_base,curve_normal_base,curve_js,H
 
-def redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base):
+def redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base,exclude_extreme):
 
     opt=lambda_opt(curve_base,curve_normal_base,robot1=robot,steps=50000,v_cmd=500)
 
@@ -83,32 +83,47 @@ def redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base):
     ###insert initial orientation
     curve_R.insert(0,curve_R[0])
 
-    ###get all possible initial config
-    try:
-        q_inits=np.array(robot.inv(curve_base[0],curve_R[0]))
-        q1_candidate=[]
-        for q in q_inits:
-            if q[2]<=np.pi/2:
-                q1_candidate.append(q)
-        if len(q1_candidate)>0:
-            q1_4_dist=9999
-            for q in q1_candidate:
-                if np.fabs(q[3])<q1_4_dist:
-                    q1_4_dist=np.fabs(q[3])
-                    q_init=copy.deepcopy(q)
-        else:
-            q1_4_dist=9999
-            for q in q_inits:
-                if np.fabs(q[3])<q1_4_dist:
-                    q1_4_dist=np.fabs(q[3])
-                    q_init=copy.deepcopy(q)
-    except:
-        traceback.print_exc()
-        print('no solution available')
-        return
+    all_qinits = []
+    for i in range(4):
+        if i==0: # default
+            curve_R_init = R_curve=direction2R(curve_normal_base[i],-curve_base[i+1]+curve_base[i])
+        elif i==1: # reverse x-axis as tangent vec
+            curve_R_init = R_curve=direction2R(curve_normal_base[i],curve_base[i+1]-curve_base[i])
+        elif i==2: # y-axis as tangent vec
+            curve_R_init = R_curve=direction2R_Y(curve_normal_base[i],-curve_base[i+1]+curve_base[i])
+        else: # reverse y-axis as tangent vec
+            curve_R_init = R_curve=direction2R_Y(curve_normal_base[i],curve_base[i+1]-curve_base[i])
+        
+        q_inits=np.array(robot.inv(curve_base[0],curve_R_init))
+        all_qinits.extend(list(q_inits))
+    
+    q_init_norm = np.linalg.norm(all_qinits,axis=1)
+    q_init = all_qinits[np.argsort(q_init_norm)[0]]
 
-    print(np.degrees(q_init))
+    ###get all possible initial config
+    # try:
+    #     q1_candidate=[]
+    #     for q in q_inits:
+    #         if q[2]<=np.pi/2:
+    #             q1_candidate.append(q)
+    #     if len(q1_candidate)>0:
+    #         q1_4_dist=9999
+    #         for q in q1_candidate:
+    #             if np.fabs(q[3])<q1_4_dist:
+    #                 q1_4_dist=np.fabs(q[3])
+    #                 q_init=copy.deepcopy(q)
+    #     # else:
+    #     #     q1_4_dist=9999
+    #     #     for q in q_inits:
+    #     #         if np.fabs(q[3])<q1_4_dist:
+    #     #             q1_4_dist=np.fabs(q[3])
+    #     #             q_init=copy.deepcopy(q)
+    # except:
+    #     traceback.print_exc()
+    #     # print('no solution available')
+
     try:
+        print(np.degrees(q_init))
         curve_js=opt.single_arm_stepwise_optimize(q_init,curve_base,curve_normal_base)
     except:
         curve_js=[]
