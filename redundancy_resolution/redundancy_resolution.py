@@ -100,28 +100,6 @@ def redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base,exclude
     q_init_norm = np.linalg.norm(all_qinits,axis=1)
     q_init = all_qinits[np.argsort(q_init_norm)[0]]
 
-    ###get all possible initial config
-    # try:
-    #     q1_candidate=[]
-    #     for q in q_inits:
-    #         if q[2]<=np.pi/2:
-    #             q1_candidate.append(q)
-    #     if len(q1_candidate)>0:
-    #         q1_4_dist=9999
-    #         for q in q1_candidate:
-    #             if np.fabs(q[3])<q1_4_dist:
-    #                 q1_4_dist=np.fabs(q[3])
-    #                 q_init=copy.deepcopy(q)
-    #     # else:
-    #     #     q1_4_dist=9999
-    #     #     for q in q_inits:
-    #     #         if np.fabs(q[3])<q1_4_dist:
-    #     #             q1_4_dist=np.fabs(q[3])
-    #     #             q_init=copy.deepcopy(q)
-    # except:
-    #     traceback.print_exc()
-    #     # print('no solution available')
-
     try:
         print(np.degrees(q_init))
         curve_js=opt.single_arm_stepwise_optimize(q_init,curve_base,curve_normal_base)
