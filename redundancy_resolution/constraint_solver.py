@@ -70,8 +70,8 @@ class lambda_opt(object):
 		q_out=[q_init]
 		Kw=1
 		for i in range(len(curve)):
-			if i%100==0:
-				print(i)
+			# if i%100==0:
+			# 	print(i)
 			try:
 				now=time.time()
 				error_fb=999
@@ -532,7 +532,8 @@ class lambda_opt(object):
 		R_temp=direction2R(curve_normal_new[0],-curve_new[1]+curve_new[0])
 		R=np.dot(R_temp,Rz(theta1))
 		try:
-			q_init=self.robot1.inv(curve_new[0],R)[0]
+			q_init=self.robot1.inv(curve_new[0],R,np.zeros(6))[0]
+
 			if method==1:###follow +x
 				q_out=self.followx(curve_new,curve_normal_new)
 			else:
@@ -549,10 +550,10 @@ class lambda_opt(object):
 		speed=traj_speed_est(self.robot1,q_out,self.lam,self.v_cmd)
 
 		###TODO: FIX TESSERACT MEMORY ERROR
-		if self.tes_env:
-			self.tes_env.update_pose(self.curve_name,H_from_RT(R_curve,shift/1000.))
-			if self.tes_env.check_collision_single(self.robot1.robot_name,self.curve_name,q_out):
-				return 999
+		# if self.tes_env:
+		# 	self.tes_env.update_pose(self.curve_name,H_from_RT(R_curve,shift/1000.))
+		# 	if self.tes_env.check_collision_single(self.robot1.robot_name,self.curve_name,q_out):
+		# 		return 999
 
 		
 		print(min(speed))

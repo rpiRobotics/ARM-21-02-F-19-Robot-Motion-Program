@@ -50,18 +50,6 @@ def redundancy_resolution_baseline(filename, robot, exclude_extreme=True):
             J_min=np.array(J_min)
             curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
             break
-        # else:
-        #     print("Use Init Tangent direction")
-        #     curve_js_all=find_js(robot,curve_base,curve_normal_base,use_init_nx=True)
-        #     if len(curve_js_all) > 0:
-        #         J_min=[]
-        #         for i in range(len(curve_js_all)):
-        #             J_min.append(find_j_min(robot,curve_js_all[i]))
-
-        #         J_min=np.array(J_min)
-        #         curve_js=curve_js_all[np.argmin(J_min.min(axis=1))]
-        #     else:
-        #         curve_js=[]
 
     if len(curve_js)==0:
         print("Us QP")
@@ -108,11 +96,15 @@ def redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base,exclude
 
     return curve_js
 
-def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd=1000):
-    print(baseline_pose_filename)
-    curve = np.loadtxt(filename,delimiter=',')
+def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_init_filename, robot, v_cmd=1000, full_opt=True, d_bounds=[], de_max_iter=500):
+    duration_limit = 30.
+    st = time.time()
 
-    opt=lambda_opt(curve[:,:3],curve[:,3:],robot1=robot,steps=500,v_cmd=v_cmd)
+    curve = np.loadtxt(filename,delimiter=',')
+    curve_js_init = np.loadtxt(curve_js_init_filename,delimiter=',')
+
+    # opt=lambda_opt(curve[:,:3],curve[:,3:],robot1=robot,steps=500,v_cmd=v_cmd)
+    opt=lambda_opt(curve[:,:3],curve[:,3:],robot1=robot,steps=400,v_cmd=v_cmd)
 
     #read in initial curve pose
     curve_pose=np.loadtxt(baseline_pose_filename,delimiter=',')
@@ -120,20 +112,48 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, robot, v_cmd
     k,theta=R2rot(curve_pose[:3,:3])
 
     ###path constraints, position constraint and curve normal constraint
-    lowerer_limit=np.array([-2*np.pi,-2*np.pi,-2*np.pi,0,-3000,0,-np.pi])
+    lower_limit=np.array([-2*np.pi,-2*np.pi,-2*np.pi,0,-3000,0,-np.pi])
     upper_limit=np.array([2*np.pi,2*np.pi,2*np.pi,3000,3000,3000,np.pi])
-    bnds=tuple(zip(lowerer_limit,upper_limit))
+    curve_base_init_0=np.dot(curve_pose[:3,:3],curve[0,:3]).T+curve_pose[:3,-1]
+    curve_base_init_1=np.dot(curve_pose[:3,:3],curve[1,:3]).T+curve_pose[:3,-1]
+    curve_normal_base_init=np.dot(curve_pose[:3,:3],curve[0,3:])
+    q_init = curve_js_init[0]
+    T_init = robot.fwd(q_init)
+    R_temp=direction2R(curve_normal_base_init,-curve_base_init_1+curve_base_init_0)
+    Rz_theta1 = np.matmul(R_temp.T,T_init.R)
+    k_dum,theta1 = R2rot(Rz_theta1)
+    if full_opt:    
+        bnds=tuple(zip(lower_limit,upper_limit))
+        x0 = np.hstack((k*theta,curve_pose[:-1,-1],[theta1]))
+    else:
+        assert len(d_bounds)==7, f"The length of the bounds differences should be 7"
+        x0 = np.hstack((k*theta,curve_pose[:-1,-1],theta1))
+        lower_limit = np.clip(x0-d_bounds,lower_limit,None)
+        upper_limit = np.clip(x0+d_bounds,None,d_bounds)
+        bnds=tuple(zip(lower_limit,upper_limit))
 
+    print("Sanity Check")
+    print(opt.curve_pose_opt2(x0))
+    print("Sanity Check Done")
+
+    def de_cb_timer(xk, convergence):
+        print('cb:',convergence)
+        print("xk:",xk)
+        if time.time()-st>duration_limit:
+            print("DE over time limit")
+            return True
 
     res = differential_evolution(opt.curve_pose_opt2, bnds, args=None,workers=-1,
-                                    x0 = np.hstack((k*theta,curve_pose[:-1,-1],[0])),
-                                    strategy='best1bin', maxiter=500,
+                                    x0 = x0,
+                                    strategy='best1bin', maxiter=de_max_iter,
                                     popsize=15, tol=1e-10,
                                     mutation=(0.5, 1), recombination=0.7,
-                                    seed=None, callback=None, disp=False,
-                                    polish=True, init='latinhypercube',
+                                    seed=None, 
+                                    callback=de_cb_timer, 
+                                    disp=False,
+                                    polish=False, init='latinhypercube',
                                     atol=0.)
-
+    
     theta0=np.linalg.norm(res.x[:3])
     k=res.x[:3]/theta0
     p_curve=res.x[3:-1]

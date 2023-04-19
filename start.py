@@ -22,10 +22,10 @@ try:
     from toolbox.fanuc_utils import *
 except:
     print("Start without FANUC Functions")
-try:
-    from toolbox.tes_env import *
-except:
-    print("Start without tesseract visualizer")
+# try:
+#     from toolbox.tes_env import *
+# except:
+#     print("Start without tesseract visualizer")
 import yaml
 
 def msgbtn(i):
@@ -515,7 +515,8 @@ class SprayGUI(QDialog):
         
         if not self.dualRobot_box.isChecked():
             baseline_pose_filename=os.path.dirname(self.curve_filename)+'/'+self.robot1_name+'/baseline/curve_pose.csv'
-            self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,baseline_pose_filename,self.robot1,v_cmd)
+            baseline_js_filename=os.path.dirname(self.curve_filename)+'/'+self.robot1_name+'/baseline/Curve_js1.csv'
+            self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,baseline_pose_filename,baseline_js_filename,self.robot1,v_cmd)
         else:
             curve_dir=os.path.dirname(self.curve_filename)
             if self.robot2_name is None:
