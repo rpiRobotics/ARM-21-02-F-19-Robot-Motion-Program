@@ -96,10 +96,8 @@ def redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base,exclude
 
     return curve_js
 
-def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_init_filename, robot, v_cmd=1000, full_opt=True, d_bounds=[], de_max_iter=500):
-    duration_limit = 30.
-    st = time.time()
-
+def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_init_filename, robot, v_cmd=1000, full_opt=True, d_bounds=[], de_max_iter=500, de_time_limit=None):
+    
     curve = np.loadtxt(filename,delimiter=',')
     curve_js_init = np.loadtxt(curve_js_init_filename,delimiter=',')
 
@@ -122,6 +120,7 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_ini
     R_temp=direction2R(curve_normal_base_init,-curve_base_init_1+curve_base_init_0)
     Rz_theta1 = np.matmul(R_temp.T,T_init.R)
     k_dum,theta1 = R2rot(Rz_theta1)
+
     if full_opt:    
         bnds=tuple(zip(lower_limit,upper_limit))
         x0 = np.hstack((k*theta,curve_pose[:-1,-1],[theta1]))
@@ -129,19 +128,22 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_ini
         assert len(d_bounds)==7, f"The length of the bounds differences should be 7"
         x0 = np.hstack((k*theta,curve_pose[:-1,-1],theta1))
         lower_limit = np.clip(x0-d_bounds,lower_limit,None)
-        upper_limit = np.clip(x0+d_bounds,None,d_bounds)
+        upper_limit = np.clip(x0+d_bounds,None,upper_limit)
         bnds=tuple(zip(lower_limit,upper_limit))
 
     print("Sanity Check")
     print(opt.curve_pose_opt2(x0))
     print("Sanity Check Done")
 
+    st = time.time()
+
     def de_cb_timer(xk, convergence):
         print('cb:',convergence)
         print("xk:",xk)
-        if time.time()-st>duration_limit:
-            print("DE over time limit")
-            return True
+        if de_time_limit:
+            if time.time()-st>de_time_limit:
+                print("DE over time limit")
+                return True
 
     res = differential_evolution(opt.curve_pose_opt2, bnds, args=None,workers=-1,
                                     x0 = x0,
@@ -176,7 +178,8 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_ini
 
     return curve_base,curve_normal_base,curve_js,H
 
-def redundancy_resolution_diffevo_dual(filename, base_T, robot1, robot2, q_init2_init, v_cmd=500, optimize_base=True):
+def redundancy_resolution_diffevo_dual(filename, base_T, robot1, robot2, q_init2_init, v_cmd=500, optimize_base=True, \
+                                       full_opt=True, d_bounds=[], de_max_iter=500, de_time_limit=None):
     
     relative_path=read_csv(filename,header=None).values
     
