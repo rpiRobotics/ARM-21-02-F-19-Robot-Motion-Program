@@ -4,6 +4,13 @@ from .constraint_solver import *
 import numpy as np
 from fanuc_motion_program_exec_client import *
 
+class DiffStatus(object):
+    def __init__(self) -> None:
+        
+        self.current_iteration=-1
+        self.current_minspeed=0
+        self.est_time=3600*48
+
 def redundancy_resolution_baseline(filename, robot, exclude_extreme=True):
 
     curve = np.loadtxt(filename,delimiter=',')
@@ -96,7 +103,7 @@ def redundancy_resolution_baseline_qp(robot,curve_base,curve_normal_base,exclude
 
     return curve_js
 
-def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_init_filename, robot, v_cmd=1000, full_opt=True, d_bounds=[], de_max_iter=500, de_time_limit=None):
+def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_init_filename, robot, opt_status=None, v_cmd=1000, full_opt=True, d_bounds_min=[], d_bounds_max=[], de_max_iter=500, de_time_limit=None):
     
     curve = np.loadtxt(filename,delimiter=',')
     curve_js_init = np.loadtxt(curve_js_init_filename,delimiter=',')
@@ -125,29 +132,44 @@ def redundancy_resolution_diffevo(filename, baseline_pose_filename, curve_js_ini
         bnds=tuple(zip(lower_limit,upper_limit))
         x0 = np.hstack((k*theta,curve_pose[:-1,-1],[theta1]))
     else:
-        assert len(d_bounds)==7, f"The length of the bounds differences should be 7"
+        assert len(d_bounds_min)==7, f"The length of the min bounds differences should be 7"
+        assert len(d_bounds_max)==7, f"The length of the max bounds differences should be 7"
         x0 = np.hstack((k*theta,curve_pose[:-1,-1],theta1))
-        lower_limit = np.clip(x0-d_bounds,lower_limit,None)
-        upper_limit = np.clip(x0+d_bounds,None,upper_limit)
+        lower_limit = np.clip(x0+d_bounds_min,lower_limit,None)
+        upper_limit = np.clip(x0+d_bounds_max,None,upper_limit)
         bnds=tuple(zip(lower_limit,upper_limit))
 
     print("Sanity Check")
-    print(opt.curve_pose_opt2(x0))
+    init_speed=-1*opt.curve_pose_opt2(x0)
+    print("Init Min Speed:",init_speed)
+    opt_status.current_minspeed=init_speed
     print("Sanity Check Done")
 
     st = time.time()
+    opt_status.current_iteration = 0
+    if de_time_limit is None:
+        opt_status.est_time = 9999999999
+    else:
+        opt_status.est_time = de_time_limit
 
     def de_cb_timer(xk, convergence):
-        print('cb:',convergence)
-        print("xk:",xk)
-        if de_time_limit:
+        opt_status.current_minspeed=-1*opt.curve_pose_opt2(xk)
+        opt_status.current_iteration+=1
+        est_total_time=((time.time()-st)/(opt_status.current_iteration))*de_max_iter
+        est_total_time=min(est_total_time,de_time_limit)
+        opt_status.est_time=est_total_time
+        print("Current Iteration:",opt_status.current_iteration)
+        print("Opt arg (xk):",xk)
+        print("Current min speed:",opt_status.current_minspeed)
+        
+        if de_time_limit is not None:
             if time.time()-st>de_time_limit:
                 print("DE over time limit")
                 return True
 
     res = differential_evolution(opt.curve_pose_opt2, bnds, args=None,workers=-1,
                                     x0 = x0,
-                                    strategy='best1bin', maxiter=de_max_iter,
+                                    strategy='best1bin', maxiter=int(de_max_iter),
                                     popsize=15, tol=1e-10,
                                     mutation=(0.5, 1), recombination=0.7,
                                     seed=None, 

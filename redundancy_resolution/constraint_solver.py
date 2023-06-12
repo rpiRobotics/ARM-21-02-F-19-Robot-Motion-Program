@@ -537,8 +537,10 @@ class lambda_opt(object):
 			if method==1:###follow +x
 				q_out=self.followx(curve_new,curve_normal_new)
 			else:
-				q_out=self.single_arm_stepwise_optimize(q_init,curve_new,curve_normal_new)
-			
+				try:
+					q_out=self.single_arm_stepwise_optimize(q_init,curve_new,curve_normal_new)
+				except AssertionError:
+					return 999
 		except:
 			# traceback.print_exc()
 			return 999
@@ -556,7 +558,7 @@ class lambda_opt(object):
 		# 		return 999
 
 		
-		print(min(speed))
+		# print(min(speed))
 		return -min(speed)
 
 

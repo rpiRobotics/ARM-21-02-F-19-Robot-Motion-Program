@@ -219,8 +219,9 @@ class SprayGUI(QDialog):
         self.mainLayout = QGridLayout()
         self.mainLayout.addLayout(self.toplayout,0,0,1,0)
         self.mainLayout.addWidget(self.redResLeftBox,1,0)
-        self.mainLayout.addWidget(self.moProgGenMidBox,1,1)
-        self.mainLayout.addWidget(self.moProgUpRightBox,1,2)
+        self.mainLayout.addWidget(self.redResBottomLeftBox,2,0)
+        self.mainLayout.addWidget(self.moProgGenMidBox,1,1,-1,1)
+        self.mainLayout.addWidget(self.moProgUpRightBox,1,2,-1,1)
         self.setLayout(self.mainLayout)
 
         self.setWindowTitle('ROBOT PATH OPTIMIZATION GUI')
@@ -343,12 +344,17 @@ class SprayGUI(QDialog):
         # Group Box
         self.redResLeftBox=QGroupBox("1. Redundancy Resolution")
         self.redResLeftBox.setFont(self.bold)
-        self.redResLeftBox.setStyleSheet("background-color: pink")
+        self.redResLeftBox.setStyleSheet("background-color: mistyrose")
+        self.redResBottomLeftBox=QGroupBox()
+        self.redResBottomLeftBox.setFont(self.bold)
+        self.redResBottomLeftBox.setStyleSheet("background-color: pink")
+        
         
         # add widgets
-        filebutton=QPushButton('Select Curve')
+        filebutton=QPushButton('1. Select Curve')
         filebutton.setFont(self.bold)
         filebutton.setDefault(True)
+        filebutton.setToolTip("Select .csv curve file")
         filebutton.clicked.connect(self.readCurveFile)
         self.curve_filenametext=QLabel('(Please add curve file)')
         # self.curve_filenametext.setFont(self.bold)
@@ -358,11 +364,13 @@ class SprayGUI(QDialog):
             self.redres_baseline_runButton=QPushButton("2a. Load with Baseline")
             self.redres_baseline_runButton.setFont(self.bold)
             self.redres_baseline_runButton.setDefault(True)
+            self.redres_baseline_runButton.setEnabled(False)
             self.redres_baseline_runButton.clicked.connect(self.run_RedundancyResolution_baseline)
             loadCurveLayout.addWidget(self.redres_baseline_runButton)
         self.redresLoadSolButton=QPushButton("2b. Load Existing Solution")
         self.redresLoadSolButton.setFont(self.bold)
         self.redresLoadSolButton.setDefault(True)
+        self.redresLoadSolButton.setEnabled(False)
         self.redresLoadSolButton.clicked.connect(self.redresReadSolution)
         loadCurveLayout.addWidget(self.redresLoadSolButton)
         self.redresCurveSolText=QLabel('(Please Load the Curve)')
@@ -382,25 +390,29 @@ class SprayGUI(QDialog):
         self.full_opt_box = QCheckBox('Full Optimization')
         self.full_opt_box.setChecked(True)
         if not self.dualRobot_box.isChecked():
-            optOptionBoundsLayout=QHBoxLayout()
             self.optBoundParam=['Roll','Pitch','Yaw','X','Y','Z','Rz']
-            self.optBoundParam_box = {}
-            for obp in self.optBoundParam:
-                self.optBoundParam_box[obp] = QLineEdit('0')
-                optbound_label=QLabel(obp)
-                optbound_label.setBuddy(self.optBoundParam_box[obp])
-                optOptionBoundsLayout.addWidget(optbound_label)
-                optOptionBoundsLayout.addWidget(self.optBoundParam_box[obp])
         else:
-            optOptionBoundsLayout=QHBoxLayout()
             self.optBoundParam=['Roll','Pitch','Yaw','X','Y','Z','Rz']
-            self.optBoundParam_box = {}
-            for obp in self.optBoundParam:
-                self.optBoundParam_box[obp] = QLineEdit('0')
-                optbound_label=QLabel(obp)
-                optbound_label.setBuddy(self.optBoundParam_box[obp])
-                optOptionBoundsLayout.addWidget(optbound_label)
-                optOptionBoundsLayout.addWidget(self.optBoundParam_box[obp])
+
+        optOptionMinBoundsLayout=QHBoxLayout()
+        optOptionMinBoundsLayout.addWidget(QLabel("Min Bounds:"))
+        optOptionMaxBoundsLayout=QHBoxLayout()
+        optOptionMaxBoundsLayout.addWidget(QLabel("Max Bounds:"))
+        self.optMinBoundParam_box = {}
+        self.optMaxBoundParam_box = {}
+        for obp in self.optBoundParam:
+            self.optMinBoundParam_box[obp] = QLineEdit('0')
+            optbound_label=QLabel(obp)
+            optbound_label.setBuddy(self.optMinBoundParam_box[obp])
+            optOptionMinBoundsLayout.addWidget(optbound_label)
+            optOptionMinBoundsLayout.addWidget(self.optMinBoundParam_box[obp])
+        for obp in self.optBoundParam:
+            self.optMaxBoundParam_box[obp] = QLineEdit('0')
+            optbound_label=QLabel(obp)
+            optbound_label.setBuddy(self.optMaxBoundParam_box[obp])
+            optOptionMaxBoundsLayout.addWidget(optbound_label)
+            optOptionMaxBoundsLayout.addWidget(self.optMaxBoundParam_box[obp])
+
         optOptionLimitLayout=QHBoxLayout()
         self.optLimitParam = ['Max Iteration','Max Time (sec)']
         optLimitParam_default = {'Max Iteration':500,'Max Time (sec)':0}
@@ -413,7 +425,8 @@ class SprayGUI(QDialog):
             optOptionLimitLayout.addWidget(self.optLimitParam_box[obp])
         optOptionLayout.addWidget(opt_param_label)
         optOptionLayout.addWidget(self.full_opt_box)
-        optOptionLayout.addLayout(optOptionBoundsLayout)
+        optOptionLayout.addLayout(optOptionMinBoundsLayout)
+        optOptionLayout.addLayout(optOptionMaxBoundsLayout)
         optOptionLayout.addLayout(optOptionLimitLayout)
 
         ##### transformation param
@@ -471,10 +484,11 @@ class SprayGUI(QDialog):
         self.redres_diffevo_runButton=QPushButton("3. Optimize Curve/Robot Pose")
         self.redres_diffevo_runButton.setFont(self.bold)
         self.redres_diffevo_runButton.setDefault(True)
+        self.redres_diffevo_runButton.setEnabled(False)
 
         self.redres_diffevo_runButton.clicked.connect(self.run_RedundancyResolution_diffevo)
 
-        self.run1_result=QLabel('')
+        self.run1_result=QLabel('(Assumes an axis-symmetrix tool)')
 
         # add layout
         layout = QVBoxLayout()
@@ -484,23 +498,25 @@ class SprayGUI(QDialog):
         layout.addLayout(loadCurveLayout)
         layout.addWidget(self.redresCurveSolText)
 
-        layout.addWidget(v_cmd_qt)
-        layout.addWidget(self.v_cmd_box)
-
         ## add param
-        layout.addLayout(optOptionLayout)
+        bottomlayout = QVBoxLayout()
+        bottomlayout.addWidget(v_cmd_qt)
+        bottomlayout.addWidget(self.v_cmd_box)
+        bottomlayout.addLayout(optOptionLayout)
 
         if self.dualRobot_box.isChecked():
-            layout.addWidget(baseTransformHeadsup)
-            layout.addLayout(baseTransLayout)
-            layout.addWidget(qinit2Headsup)
-            layout.addLayout(qinit2Layout)
-            layout.addWidget(self.opt_base_box)
+            bottomlayout.addWidget(baseTransformHeadsup)
+            bottomlayout.addLayout(baseTransLayout)
+            bottomlayout.addWidget(qinit2Headsup)
+            bottomlayout.addLayout(qinit2Layout)
+            bottomlayout.addWidget(self.opt_base_box)
 
-        layout.addWidget(self.redres_diffevo_runButton)
-        layout.addWidget(self.run1_result)
-        layout.addStretch(1)
+        bottomlayout.addWidget(self.redres_diffevo_runButton)
+        bottomlayout.addWidget(self.run1_result)
+        bottomlayout.addStretch(1)
+
         self.redResLeftBox.setLayout(layout)
+        self.redResBottomLeftBox.setLayout(bottomlayout)
 
     def readCurveFile(self):
         
@@ -509,17 +525,27 @@ class SprayGUI(QDialog):
         dlg.setFilter(QDir.Files)
 
         if dlg.exec_():
-            filenames = dlg.selectedFiles()
-            self.curve_filename = filenames[0]
-            self.curve_pathname = os.path.dirname(self.curve_filename)
-            self.curve_filenametext.setText(self.curve_filename)
+            try:
+                filenames = dlg.selectedFiles()
+                self.curve_filename = filenames[0]
+                self.curve_pathname = os.path.dirname(self.curve_filename)
+                self.curve_filenametext.setText(self.curve_filename)
+                self.redres_baseline_runButton.setEnabled(True)
+                self.redresLoadSolButton.setEnabled(True)
+            except:
+                # TODO: Add error msg
+                pass
     
     def redresReadSolution(self):
 
         try:
-            solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
-            self.redresSolDor = solution_dir
-            self.redresCurveSolText.setText(solution_dir)
+            try:
+                solution_dir = str(QFileDialog.getExistingDirectory(self, "Select Directory"))
+                self.redresSolDor = solution_dir
+                self.redresCurveSolText.setText(solution_dir)
+                self.redres_diffevo_runButton.setEnabled(True)
+            except:
+                pass
         except Exception as e:
             print(e)
     
@@ -572,20 +598,24 @@ class SprayGUI(QDialog):
         self.redres_thread=QThread()
         self.redres_timer_thread=QThread()
         self.redres_timer=Timer()
+        self.redres_status=DiffStatus()
         
         if not self.dualRobot_box.isChecked():
             sol_pose_filename=self.redresCurveSolText.text()+'/curve_pose.csv'
             sol_js_filename=self.redresCurveSolText.text()+'/Curve_js1.csv'
 
             full_opt = self.full_opt_box.isChecked()
-            opt_bounds = []
+            opt_min_bounds = []
+            opt_max_bounds = []
             for obp in self.optBoundParam:
-                opt_bounds.append(float(self.optBoundParam_box[obp].text()))
+                opt_min_bounds.append(float(self.optMinBoundParam_box[obp].text()))
+            for obp in self.optBoundParam:
+                opt_max_bounds.append(float(self.optMaxBoundParam_box[obp].text()))
             de_max_iter = np.fabs(int(self.optLimitParam_box[self.optLimitParam[0]].text()))
             de_max_time = np.fabs(int(self.optLimitParam_box[self.optLimitParam[1]].text()))
 
-            self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,sol_pose_filename,sol_js_filename,self.robot1,v_cmd,\
-                                      full_opt,opt_bounds,de_max_iter,de_max_time)
+            self.redres_worker=Worker(redundancy_resolution_diffevo,self.curve_filename,sol_pose_filename,sol_js_filename,self.robot1,self.redres_status,v_cmd,\
+                                      full_opt,opt_min_bounds,opt_max_bounds,de_max_iter,de_max_time)
         else:
             curve_dir=os.path.dirname(self.curve_filename)
             if self.robot2_name is None:
@@ -610,6 +640,7 @@ class SprayGUI(QDialog):
                 q_init2.append(float(self.r2init_boxes[j].text()))
             q_init2=np.radians(q_init2)
             self.redres_worker=Worker(redundancy_resolution_diffevo_dual,self.curve_filename,base_T,self.robot1,self.robot2,q_init2,int(v_cmd),self.opt_base_box.isChecked())
+        
         self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread=\
             setup_worker_timer(self.redres_worker,self.redres_thread,self.redres_timer,self.redres_timer_thread,\
                 self.prog_RedundancyResolution,self.res_RedundancyResolution_diffevo)
@@ -628,7 +659,13 @@ class SprayGUI(QDialog):
     
     def prog_RedundancyResolution(self,n):
         
-        self.run1_result.setText('Solving Redundancy Resolution. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
+        
+        # self.run1_result.setText('Solving Redundancy Resolution. Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
+        self.run1_result.setText('Solving Redundancy Resolution.\n\
+                                 Iteration: '+str(int(self.redres_status.current_iteration))+'\n\
+                                 Min Speed: '+str(round(self.redres_status.current_minspeed,4))+' mm/sec\n\
+                                 Est. Time to go: '+time.strftime("%H:%M:%S", time.gmtime(max(0,self.redres_status.est_time-n)))+'\n\
+                                 Time: '+time.strftime("%H:%M:%S", time.gmtime(n)))
     
     def res_RedundancyResolution_baseline(self,result):
 
@@ -654,6 +691,8 @@ class SprayGUI(QDialog):
             DataFrame(curve_js).to_csv(save_filepath+'Curve_js1.csv',header=False,index=False)
             self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             self.redresCurveSolText.setText(save_filepath)
+
+            self.redres_diffevo_runButton.setEnabled(True)
         else:
             self.run1_result.setText('Redundancy Resolution. No JS Solution. \nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
 
@@ -674,7 +713,10 @@ class SprayGUI(QDialog):
             np.savetxt(save_filepath+'curve_pose.csv',H,delimiter=',')
             if len(curve_js) > 0:
                 DataFrame(curve_js).to_csv(save_filepath+'Curve_js1.csv',header=False,index=False)
-                self.run1_result.setText('Redundancy Resolution Solved\nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
+                self.run1_result.setText('Redundancy Resolution Solved\n\
+                                         Total Iteration: '+str(int(self.redres_status.current_iteration))+'\n\
+                                         Final Min Speed: '+str(round(self.redres_status.current_minspeed,4))+' mm/sec\n\
+                                         File Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
             else:
                 self.run1_result.setText('Redundancy Resolution. No JS Solution. \nFile Path:\n'+save_filepath+'\nTotal Time: '+time.strftime("%H:%M:%S", time.gmtime(run_duration)))
         else:
