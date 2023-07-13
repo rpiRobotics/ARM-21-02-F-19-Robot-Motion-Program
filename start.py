@@ -139,59 +139,24 @@ class SprayGUI(QDialog):
             print("Start without tesseract visualizer")
             self.tes_env=None
         # self.tes_env=None
-
-        # robot box
-        with open('config/robot_lists.yml','r') as f:
-            all_robot=yaml.safe_load(f)
-        robot_list=all_robot['robots']        
-        self.robotComBox1=QComboBox()
-        self.robotComBox1.addItems(robot_list)
-        self.robotComBox1.currentTextChanged.connect(self.robot1_change)
-        robotlabel1=QLabel("Robot1:")
-        robotlabel1.setFont(self.bold)
-        robotlabel1.setBuddy(self.robotComBox1)
-        self.robotComBox2=QComboBox()
-        self.robotComBox2.addItems(robot_list)
-        self.robotComBox2.currentTextChanged.connect(self.robot2_change)
-        robotlabel2=QLabel("Robot2:")
-        robotlabel2.setFont(self.bold)
-        robotlabel2.setBuddy(self.robotComBox2)
-
-        ###reset visualization button
-        vis_reset_button=QPushButton('Reset Visualization')
-        vis_reset_button.setFont(self.bold)
-        vis_reset_button.setDefault(False)
-        vis_reset_button.clicked.connect(self.reset_visualization)
-
-        ###ROBOT CONTROLLER IP
-        IPlabel=QLabel("ROBOT IP:")
-        IPlabel.setFont(self.bold)
-        self.robot_ip_box=QLineEdit('127.0.0.1')
-        self.robot_ip_box.setFixedWidth(100)
-
-        IPlabel.setBuddy(self.robot_ip_box)
-        ip_set_button=QPushButton('Set IP')
-        ip_set_button.setFont(self.bold)
-        ip_set_button.setDefault(False)
-        ip_set_button.clicked.connect(self.read_ip)
-
+        
         ### Dual Robot Activation
+        self.dual_active=False
         self.dualRobot_box=QCheckBox("Dual Robot")
         self.dualRobot_box.setFont(self.bold)
         self.dualRobot_box.setChecked(False)
         self.dualRobot_box.stateChanged.connect(self.dualRobotActFunc)
 
-        ### real Robot Activation
-        self.realrobot_button= QPushButton('Real Robot')
-        self.realrobot_button.setFont(self.bold)
-        self.realrobot_button.setDefault(False)
-        self.realrobot_button.clicked.connect(self.changeColor)
+        ### helper label
+        helplabel = QLabel()
+        helplabel.setText('<a href="https://github.com/rpiRobotics/ARM-21-02-F-19-Robot-Motion-Program/blob/main/doc/gui_manual.md">Help !</a>')
+        helplabel.setOpenExternalLinks(True)
+        helplabel.setFont(self.bold)
 
-        ### Simulation Result Activation
-        self.sim_result_box=QCheckBox("Taking Simulation Result")
-        self.sim_result_box.setFont(self.bold)
-        self.sim_result_box.setChecked(False)
-
+        ## robot box
+        self.robot_box()
+        ## connection box
+        self.connection_box()
         ## Redundancy Resolution Box
         self.redundancyResLeft()
         ## Motion Program Generation Box
@@ -200,23 +165,15 @@ class SprayGUI(QDialog):
         self.motionProgUpdateRight()
 
         ## toplayout
-        self.toplayout=QHBoxLayout()
-        self.toplayout.addWidget(robotlabel1)
-        self.toplayout.addWidget(self.robotComBox1)
-        self.toplayout.addStretch(1)
-        self.toplayout.addWidget(robotlabel2)
-        self.toplayout.addWidget(self.robotComBox2)
-        self.toplayout.addWidget(vis_reset_button)
-        self.toplayout.addWidget(IPlabel)
-        self.toplayout.addWidget(self.robot_ip_box)
-        self.toplayout.addWidget(ip_set_button)
+        self.toplayout=QVBoxLayout()
         self.toplayout.addWidget(self.dualRobot_box)
-        self.toplayout.addWidget(self.realrobot_button)
-        self.toplayout.addWidget(self.sim_result_box)
+        self.toplayout.addWidget(helplabel)
 
         ## main layout
         self.mainLayout = QGridLayout()
-        self.mainLayout.addLayout(self.toplayout,0,0,1,0)
+        self.mainLayout.addLayout(self.toplayout,0,0)
+        self.mainLayout.addWidget(self.robotBox,0,1)
+        self.mainLayout.addWidget(self.connectBox,0,2)
         self.mainLayout.addWidget(self.redResLeftBox,1,0)
         self.mainLayout.addWidget(self.redResBottomLeftBox,2,0)
         self.mainLayout.addWidget(self.moProgGenMidBox,1,1,-1,1)
@@ -306,7 +263,11 @@ class SprayGUI(QDialog):
 
     def dualRobotActFunc(self):
 
+        self.dual_active= not self.dual_active
+
         ########## update all box
+        ## Robot Box
+        self.robot_box()
         ## Redundancy Resolution Box
         self.redundancyResLeft()
         ## Motion Program Generation Box
@@ -316,6 +277,10 @@ class SprayGUI(QDialog):
         ############################
 
         ## main layout
+        robitem = self.mainLayout.itemAtPosition(0,1)
+        self.mainLayout.removeItem(robitem)
+        robitem.widget().deleteLater()
+        self.mainLayout.addWidget(self.robotBox,0,1)
         leftitem = self.mainLayout.itemAtPosition(1,0)
         self.mainLayout.removeItem(leftitem)
         leftitem.widget().deleteLater()
@@ -332,6 +297,81 @@ class SprayGUI(QDialog):
         self.mainLayout.removeItem(rightitem)
         rightitem.widget().deleteLater()
         self.mainLayout.addWidget(self.moProgUpRightBox,1,2,-1,1)
+
+    def robot_box(self):
+
+        # Group Box
+        self.robotBox=QGroupBox("Robots")
+        self.robotBox.setFont(self.bold)
+        # self.robotBox.setStyleSheet("background-color: mistyrose")
+
+        # robot box
+        with open('config/robot_lists.yml','r') as f:
+            all_robot=yaml.safe_load(f)
+        robot_list=all_robot['robots']        
+        self.robotComBox1=QComboBox()
+        self.robotComBox1.addItems(robot_list)
+        self.robotComBox1.currentTextChanged.connect(self.robot1_change)
+        robotlabel1=QLabel("Robot1:")
+        robotlabel1.setFont(self.bold)
+        robotlabel1.setBuddy(self.robotComBox1)
+        self.robotComBox2=QComboBox()
+        self.robotComBox2.addItems(robot_list)
+        self.robotComBox2.currentTextChanged.connect(self.robot2_change)
+        if self.dualRobot_box.isChecked():
+            self.robotComBox2.setEnabled(True)
+        else:
+            self.robotComBox2.setEnabled(False)
+        robotlabel2=QLabel("Robot2:")
+        robotlabel2.setFont(self.bold)
+        robotlabel2.setBuddy(self.robotComBox2)
+
+        hbox1 = QHBoxLayout()
+        hbox1.addWidget(robotlabel1)
+        hbox1.addWidget(self.robotComBox1)
+        hbox2 = QHBoxLayout()
+        hbox2.addWidget(robotlabel2)
+        hbox2.addWidget(self.robotComBox2)
+        layout = QVBoxLayout()
+        layout.addLayout(hbox1)
+        layout.addLayout(hbox2)
+
+        self.robotBox.setLayout(layout)
+
+    def connection_box(self):
+
+        # Group Box
+        self.connectBox=QGroupBox("Connections")
+        self.connectBox.setFont(self.bold)
+        # self.connectBox.setStyleSheet("background-color: mistyrose")
+
+        ###ROBOT CONTROLLER IP
+        IPlabel=QLabel("ROBOT IP:")
+        IPlabel.setFont(self.bold)
+        self.robot_ip_box=QLineEdit('127.0.0.1')
+        self.robot_ip_box.setFixedWidth(100)
+        IPlabel.setBuddy(self.robot_ip_box)
+
+        IPlabel.setBuddy(self.robot_ip_box)
+        ip_set_button=QPushButton('Set IP')
+        ip_set_button.setFont(self.bold)
+        ip_set_button.setDefault(False)
+        ip_set_button.clicked.connect(self.read_ip)
+
+        ### real Robot Activation
+        self.realrobot_button= QPushButton('Real Robot')
+        self.realrobot_button.setFont(self.bold)
+        self.realrobot_button.setDefault(False)
+        self.realrobot_button.clicked.connect(self.changeColor)
+
+        hbox1 = QHBoxLayout()
+        hbox1.addWidget(IPlabel)
+        hbox1.addWidget(self.robot_ip_box)
+
+        layout = QVBoxLayout()
+        layout.addLayout(hbox1)
+        layout.addWidget(ip_set_button)
+        self.connectBox.setLayout(layout)
 
     def reset_visualization(self):
 
@@ -364,7 +404,6 @@ class SprayGUI(QDialog):
         self.redResBottomLeftBox=QGroupBox()
         self.redResBottomLeftBox.setFont(self.bold)
         self.redResBottomLeftBox.setStyleSheet("background-color: pink")
-        
         
         # add widgets
         filebutton=QPushButton('1. Select Curve')
@@ -1049,13 +1088,25 @@ class SprayGUI(QDialog):
         extend_end_label.setFont(self.bold)
         extend_end_label.setBuddy(self.extend_end_box)
 
+        ### Simulation Result Activation
+        self.sim_result_box=QCheckBox("Taking Simulation Result")
+        self.sim_result_box.setFont(self.bold)
+        self.sim_result_box.setChecked(False)
+
+        # tesseract visualization
         self.visual_runButton=QPushButton("Run Tesseracy Visualization")
         self.visual_runButton.setFont(self.bold)
+        self.visual_runButton.clicked.connect(self.run_Visualization)
+        ###reset visualization button
+        vis_reset_button=QPushButton('Reset Visualization')
+        vis_reset_button.setFont(self.bold)
+        vis_reset_button.clicked.connect(self.reset_visualization)
         if self.tes_env is None:
             self.visual_runButton.setEnabled(False)
+            vis_reset_button.setEnabled(False)
         else:
             self.visual_runButton.setEnabled(True)
-        self.visual_runButton.clicked.connect(self.run_Visualization)
+            vis_reset_button.setEnabled(True)
 
         ### for FANUC utool
         uframe_utool1_layout=QHBoxLayout()
@@ -1141,6 +1192,10 @@ class SprayGUI(QDialog):
         extendlayout.addWidget(extend_end_label)
         extendlayout.addWidget(self.extend_end_box)
 
+        tesvizlayout=QHBoxLayout()
+        tesvizlayout.addWidget(self.visual_runButton)
+        tesvizlayout.addWidget(vis_reset_button)
+
         # add layout
         layout = QVBoxLayout()
         layout.addWidget(solution_button)
@@ -1155,7 +1210,8 @@ class SprayGUI(QDialog):
         layout.addLayout(uframe_utool1_layout)
         if self.dualRobot_box.isChecked():
             layout.addLayout(uframe_utool2_layout)
-        layout.addWidget(self.visual_runButton)
+        layout.addWidget(self.sim_result_box)
+        layout.addLayout(tesvizlayout)
         layout.addWidget(self.moupdate_runButton)
         layout.addWidget(self.run4_result)
         layout.addWidget(self.run4_result_img)
